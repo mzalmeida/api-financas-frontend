@@ -1,61 +1,22 @@
 const API_URL = "https://api-financas-backend.onrender.com";
 
-async function login() {
-  const usuario = document.getElementById("usuario").value;
-  const senha = document.getElementById("senha").value;
-  const linkedin = document.getElementById("linkedin").value;
+async function carregarView(view) {
+  const token = localStorage.getItem("token");
   const msg = document.getElementById("msg");
+  const resultado = document.getElementById("resultado");
 
   msg.innerText = "";
-
-  if (!usuario || !senha || !linkedin) {
-    msg.innerText = "Usuário, senha e LinkedIn são obrigatórios";
-    return;
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        usuario,
-        senha,
-        linkedin
-      })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      msg.innerText = data.erro || "Erro no login";
-      return;
-    }
-
-    // salva token
-    localStorage.setItem("token", data.token);
-
-    // chama dados protegidos
-    await carregarDados();
-
-  } catch (err) {
-    msg.innerText = "Erro ao conectar com a API";
-  }
-}
-async function carregarDados() {
-  const msg = document.getElementById("msg");
-  const token = localStorage.getItem("token");
+  resultado.innerText = "Carregando...";
 
   if (!token) {
-    msg.innerText = "Token não encontrado. Faça login novamente.";
+    msg.innerText = "Faça login novamente.";
     return;
   }
 
   try {
-    const response = await fetch(`${API_URL}/gastos_banco`, {
+    const response = await fetch(`${API_URL}/gastos/${view}`, {
       headers: {
-        "Authorization": `Bearer ${token}`
+        Authorization: `Bearer ${token}`
       }
     });
 
@@ -66,13 +27,9 @@ async function carregarDados() {
       return;
     }
 
-    // exibe resultado
-    document.getElementById("login").style.display = "none";
-    document.getElementById("dados").style.display = "block";
-    document.getElementById("resultado").innerText =
-      JSON.stringify(data, null, 2);
+    resultado.innerText = JSON.stringify(data, null, 2);
 
   } catch (err) {
-    msg.innerText = "Erro ao consultar API protegida";
+    msg.innerText = "Erro de conexão com a API";
   }
 }
