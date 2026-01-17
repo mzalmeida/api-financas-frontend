@@ -1,38 +1,42 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>API Finanças - Demo</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <title>Finanças</title>
+  <script src="app.js" defer></script>
 </head>
 <body>
 
-  <h1>API Finanças – Demo Pública</h1>
-
+  <!-- 🔐 LOGIN -->
   <div id="login">
-    <input id="usuario" placeholder="Usuário" />
-    <input id="senha" type="password" placeholder="Senha" />
-    <input id="linkedin" placeholder="LinkedIn (obrigatório)" />
+    <h2>Login</h2>
+
+    <input type="text" id="usuario" placeholder="Usuário"><br><br>
+    <input type="password" id="senha" placeholder="Senha"><br><br>
+    <input type="text" id="linkedin" placeholder="LinkedIn"><br><br>
+
     <button onclick="login()">Entrar</button>
     <p id="msg"></p>
   </div>
 
+  <!-- 📊 ÁREA DE DADOS -->
   <div id="dados" style="display:none;">
-    <h2>Gastos por Banco</h2>
+
+    <!-- 🔹 MENU -->
+    <div id="menu">
+      <button onclick="carregarView('banco')">Gastos por Banco</button>
+      <button onclick="carregarView('base')">Transações Base</button>
+      <button onclick="carregarView('recorrentes')">Recorrentes</button>
+      <button onclick="carregarView('fornecedores')">Fornecedores</button>
+      <button onclick="carregarView('duplicadas')">Duplicadas</button>
+    </div>
+
+    <hr>
+
+    <!-- 🔹 RESULTADO -->
     <pre id="resultado"></pre>
+
   </div>
 
-  <div id="menu">
-    <button onclick="carregarView('banco')">Gastos por Banco</button>
-    <button onclick="carregarView('base')">Transações Base</button>
-    <button onclick="carregarView('recorrentes')">Recorrentes</button>
-    <button onclick="carregarView('fornecedores')">Fornecedores</button>
-    <button onclick="carregarView('duplicadas')">Duplicadas</button>
-  </div>
-
-<pre id="resultado"></pre>
-<p id="msg"></p>
-
-  <script src="app.js"></script>
 </body>
 </html>
