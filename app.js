@@ -1,35 +1,49 @@
 const API_URL = "https://api-financas-backend.onrender.com";
 
-async function carregarView(view) {
-  const token = localStorage.getItem("token");
+async function login() {
+  const usuario = document.getElementById("usuario").value;
+  const senha = document.getElementById("senha").value;
+  const linkedin = document.getElementById("linkedin").value;
   const msg = document.getElementById("msg");
-  const resultado = document.getElementById("resultado");
 
   msg.innerText = "";
-  resultado.innerText = "Carregando...";
 
-  if (!token) {
-    msg.innerText = "Faça login novamente.";
+  if (!usuario || !senha || !linkedin) {
+    msg.innerText = "Usuário, senha e LinkedIn são obrigatórios";
     return;
   }
 
   try {
-    const response = await fetch(`${API_URL}/gastos/${view}`, {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`
-      }
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        usuario,
+        senha,
+        linkedin
+      })
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      msg.innerText = data.erro || "Erro ao buscar dados";
+      msg.innerText = data.erro || "Erro no login";
       return;
     }
 
-    resultado.innerText = JSON.stringify(data, null, 2);
+    // ✅ SALVA TOKEN
+    localStorage.setItem("token", data.token);
+
+    // ✅ AQUI É O PONTO QUE FALTAVA 👇
+    document.getElementById("login").style.display = "none";
+    document.getElementById("dados").style.display = "block";
+
+    // ✅ CARREGA A PRIMEIRA VIEW
+    await carregarView("banco");
 
   } catch (err) {
-    msg.innerText = "Erro de conexão com a API";
+    msg.innerText = "Erro ao conectar com a API";
   }
 }
