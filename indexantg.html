@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Demo | Gastos por Banco</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f6f8;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 900px;
+      margin: 40px auto;
+      background: #fff;
+      padding: 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      margin-top: 0;
+      color: #333;
+    }
+    label {
+      display: block;
+      margin-top: 12px;
+      font-weight: bold;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-size: 14px;
+    }
+    button {
+      background: #0077b5;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 16px;
+    }
+    button:hover {
+      background: #005f8d;
+    }
+    .hidden {
+      display: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background: #f0f0f0;
+    }
+    .footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #777;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container" id="loginBox">
+  <h1>Acesso à Base de Demonstração</h1>
+
+  <label>Usuário</label>
+  <input type="text" id="usuario" placeholder="Digite qualquer usuário" />
+
+  <label>Senha</label>
+  <input type="password" id="senha" placeholder="Senha de teste" />
+
+  <label>Perfil do LinkedIn (obrigatório)</label>
+  <input type="url" id="linkedin" placeholder="https://www.linkedin.com/in/seu-perfil" />
+
+  <button onclick="login()">Acessar</button>
+</div>
+
+<div class="container hidden" id="dadosBox">
+  <h1>Gastos por Banco</h1>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Banco</th>
+        <th>Total Gasto</th>
+      </tr>
+    </thead>
+    <tbody id="tabelaDados"></tbody>
+  </table>
+
+  <div class="footer">
+    Dados apenas para fins demonstrativos
+  </div>
+</div>
+
+<script>
+  const API_URL = "http://localhost:3000/gastos_banco";
+  const TOKEN_FIXO = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJlbWFpbCI6InRlc3RlQHRlc3RlLmNvbSIsImlhdCI6MTc2ODQwODk4NiwiZXhwIjoxNzY4NDk1Mzg2fQ.OiRCdBTLZpNZQr36gWN15rpXKl3c4O8yf6EQVOTXn0A";
+
+  /*function login() {
+    const senha = document.getElementById('senha').value;
+    const linkedin = document.getElementById('linkedin').value;
+
+    if (senha !== 'mteste') {
+      alert('Senha inválida');
+      return;
+    }
+
+    if (!linkedin || !linkedin.includes('linkedin.com')) {
+      alert('Informe um perfil válido do LinkedIn');
+      return;
+    }
+
+    registrarLog(linkedin);
+    carregarDados();
+  }
+    */
+    function login() {
+    const usuario = document.getElementById("usuario").value.trim();
+    const senha = document.getElementById("senha").value.trim();
+    const linkedin = document.getElementById("linkedin").value.trim();
+
+    if (!usuario || !senha || !linkedin) {
+    alert("Preencha todos os campos");
+    return;
+  }
+
+  // 🔐 credenciais fixas de demonstração
+    if (usuario !== "testem" || senha !== "mteste") {
+    alert("Senha inválida");
+    return;
+  }
+
+  // registra acesso (log local por enquanto)
+    console.log("Acesso registrado:", {
+    linkedin,
+    data: new Date().toISOString()
+  });
+
+    carregarDados();
+}
+
+  function registrarLog(linkedin) {
+    console.log('Acesso registrado:', {
+      linkedin,
+      data: new Date().toISOString()
+    });
+  }
+
+  async function carregarDados() {
+    try {
+      const res = await fetch(API_URL, {
+        headers: {
+          Authorization: `Bearer ${TOKEN_FIXO}`
+        }
+      });
+
+      const json = await res.json();
+
+      document.getElementById('loginBox').classList.add('hidden');
+      document.getElementById('dadosBox').classList.remove('hidden');
+
+      const tbody = document.getElementById('tabelaDados');
+      tbody.innerHTML = '';
+
+      json.dados.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${item.banco}</td><td>R$ ${Math.abs(item.total_gasto).toFixed(2)}</td>`;
+        tbody.appendChild(tr);
+      });
+
+    } catch (err) {
+      alert('Erro ao carregar dados');
+      console.error(err);
+    }
+  }
+</script>
+
+</body>
+</html>
