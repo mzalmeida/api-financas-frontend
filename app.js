@@ -33,9 +33,6 @@ async function login() {
     document.getElementById("login").style.display = "none";
     document.getElementById("dados").style.display = "block";
 
-    // carrega a primeira view automaticamente
-    //carregarView("banco");
-
   } catch {
     msg.innerText = "Erro ao conectar com a API";
   }
@@ -55,22 +52,48 @@ function carregarView(view) {
       Authorization: `Bearer ${token}`
     }
   })
-  .then(async res => {
-    if (res.status === 401) {
-      throw new Error("401");
-    }
+  .then(res => {
+    if (!res.ok) throw new Error("401");
     return res.json();
   })
   .then(data => {
     console.log("Dados recebidos:", data);
+    renderizarTabela(data.dados);
   })
   .catch(err => {
-    if (err.message === "401") {
-      alert("Token inválido ou expirado. Faça login novamente.");
-      localStorage.removeItem("token");
-      location.reload();
-    } else {
-      alert("Erro ao buscar dados");
-    }
+    alert("Sessão expirada ou não autorizada");
+    localStorage.removeItem("token");
+    location.reload();
   });
+}
+
+/* 🧾 RENDERIZA TABELA */
+function renderizarTabela(dados) {
+  if (!dados || dados.length === 0) {
+    document.getElementById("resultado").innerText = "Nenhum dado encontrado.";
+    return;
+  }
+
+  const colunas = Object.keys(dados[0]);
+
+  let html = "<table border='1' cellpadding='6' cellspacing='0'>";
+  html += "<thead><tr>";
+
+  colunas.forEach(col => {
+    html += `<th>${col}</th>`;
+  });
+
+  html += "</tr></thead><tbody>";
+
+  dados.forEach(linha => {
+    html += "<tr>";
+    colunas.forEach(col => {
+      html += `<td>${linha[col]}</td>`;
+    });
+    html += "</tr>";
+  });
+
+  html += "</tbody></table>";
+
+  document.getElementById("resultado").innerHTML = html;
 }
