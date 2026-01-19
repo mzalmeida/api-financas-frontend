@@ -34,7 +34,7 @@ async function login() {
     document.getElementById("dados").style.display = "block";
 
     // carrega a primeira view automaticamente
-    carregarView("banco");
+    //carregarView("banco");
 
   } catch {
     msg.innerText = "Erro ao conectar com a API";
@@ -45,23 +45,32 @@ async function login() {
 function carregarView(view) {
   const token = localStorage.getItem("token");
 
+  if (!token) {
+    alert("Você não está logado");
+    return;
+  }
+
   fetch(`${API_URL}/gastos/${view}`, {
-    method: "GET",
     headers: {
-      "Authorization": `Bearer ${token}`,
-      "Content-Type": "application/json"
+      Authorization: `Bearer ${token}`
     }
   })
-  .then(res => {
-    if (!res.ok) throw new Error("Não autorizado");
+  .then(async res => {
+    if (res.status === 401) {
+      throw new Error("401");
+    }
     return res.json();
   })
   .then(data => {
     console.log("Dados recebidos:", data);
-    // aqui você já deve ter o render da tabela
   })
   .catch(err => {
-    console.error("Erro:", err);
-    alert("Sessão expirada ou não autorizado");
+    if (err.message === "401") {
+      alert("Token inválido ou expirado. Faça login novamente.");
+      localStorage.removeItem("token");
+      location.reload();
+    } else {
+      alert("Erro ao buscar dados");
+    }
   });
 }
