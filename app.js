@@ -42,33 +42,26 @@ async function login() {
 }
 
 /* 📊 CARREGA QUALQUER VIEW */
-async function carregarView(tipo) {
+function carregarView(view) {
   const token = localStorage.getItem("token");
-  const msg = document.getElementById("msg");
 
-  if (!token) {
-    msg.innerText = "Token não encontrado. Faça login novamente.";
-    return;
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/gastos/${tipo}`, {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      msg.innerText = data.erro || "Erro ao buscar dados";
-      return;
+  fetch(`${API_URL}/gastos/${view}`, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json"
     }
-
-    document.getElementById("resultado").innerText =
-      JSON.stringify(data, null, 2);
-
-  } catch {
-    msg.innerText = "Erro ao consultar API";
-  }
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("Não autorizado");
+    return res.json();
+  })
+  .then(data => {
+    console.log("Dados recebidos:", data);
+    // aqui você já deve ter o render da tabela
+  })
+  .catch(err => {
+    console.error("Erro:", err);
+    alert("Sessão expirada ou não autorizado");
+  });
 }
