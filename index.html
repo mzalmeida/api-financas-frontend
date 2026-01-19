@@ -18,6 +18,7 @@
     <button onclick="login()">Entrar</button>
     <p id="msg"></p>
   </div>
+  
 
   <!-- 📊 ÁREA DE DADOS -->
   <div id="dados" style="display:none;">
@@ -26,10 +27,11 @@
     <!-- 🔹 MENU -->
     <div id="menu">
       <button onclick="carregarView('banco')">Gastos por Banco</button>
-      <button onclick="carregarView('base')">Transações Base</button>
+      <!--<button onclick="carregarView('base')">Transações Base</button>-->
       <button onclick="carregarView('recorrentes')">Recorrentes</button>
       <button onclick="carregarView('fornecedores')">Fornecedores</button>
       <button onclick="carregarView('duplicadas')">Duplicadas</button>
+      <button id="btnVoltar" class="btn-voltar">⬅ Voltar para Login</button>
     </div>
 
     <hr>

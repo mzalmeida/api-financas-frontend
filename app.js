@@ -32,6 +32,10 @@ async function login() {
 
     document.getElementById("login").style.display = "none";
     document.getElementById("dados").style.display = "block";
+    document.getElementById('btnVoltar').addEventListener('click', () => {
+    localStorage.removeItem('token'); // se estiver usando token
+    window.location.href = 'login.html';
+});
 
   } catch {
     msg.innerText = "Erro ao conectar com a API";
