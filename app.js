@@ -28,21 +28,19 @@ async function login() {
       return;
     }
 
+    // 🔑 salva token
     localStorage.setItem("token", data.token);
 
+    // alterna telas
     document.getElementById("login").style.display = "none";
     document.getElementById("dados").style.display = "block";
-    document.getElementById('btnVoltar').addEventListener('click', () => {
-    localStorage.removeItem('token'); // se estiver usando token
-    window.location.href = 'login.html';
-});
 
   } catch {
     msg.innerText = "Erro ao conectar com a API";
   }
 }
 
-/* 📊 CARREGA QUALQUER VIEW */
+/* 📊 CARREGA DADOS */
 function carregarView(view) {
   const token = localStorage.getItem("token");
 
@@ -57,11 +55,10 @@ function carregarView(view) {
     }
   })
   .then(res => {
-    if (!res.ok) throw new Error("401");
+    if (res.status === 401) throw new Error("401");
     return res.json();
   })
   .then(data => {
-    console.log("Dados recebidos:", data);
     renderizarTabela(data.dados);
   })
   .catch(err => {
@@ -71,7 +68,7 @@ function carregarView(view) {
   });
 }
 
-/* 🧾 RENDERIZA TABELA */
+/* 🧾 TABELA */
 function renderizarTabela(dados) {
   if (!dados || dados.length === 0) {
     document.getElementById("resultado").innerText = "Nenhum dado encontrado.";
@@ -80,7 +77,7 @@ function renderizarTabela(dados) {
 
   const colunas = Object.keys(dados[0]);
 
-  let html = "<table border='1' cellpadding='6' cellspacing='0'>";
+  let html = "<table>";
   html += "<thead><tr>";
 
   colunas.forEach(col => {
@@ -100,4 +97,16 @@ function renderizarTabela(dados) {
   html += "</tbody></table>";
 
   document.getElementById("resultado").innerHTML = html;
+}
+
+/* 🔙 BOTÃO SAIR */
+const btnVoltar = document.getElementById("btnVoltar");
+
+if (btnVoltar) {
+  btnVoltar.addEventListener("click", () => {
+    localStorage.removeItem("token");
+    document.getElementById("dados").style.display = "none";
+    document.getElementById("login").style.display = "block";
+    document.getElementById("resultado").innerHTML = "";
+  });
 }

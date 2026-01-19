@@ -3,42 +3,44 @@
 <head>
   <meta charset="UTF-8">
   <title>Finanças</title>
-  <script src="app.js" defer></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<div class="container">
 
   <!-- 🔐 LOGIN -->
   <div id="login">
     <h2>Login</h2>
 
-    <input type="text" id="usuario" placeholder="Usuário"><br><br>
-    <input type="password" id="senha" placeholder="Senha"><br><br>
-    <input type="text" id="linkedin" placeholder="LinkedIn"><br><br>
+    <input type="text" id="usuario" placeholder="Usuário">
+    <input type="password" id="senha" placeholder="Senha">
+    <input type="text" id="linkedin" placeholder="LinkedIn">
 
     <button onclick="login()">Entrar</button>
-    <p id="msg"></p>
+    <p id="msg" class="erro"></p>
   </div>
-  
 
-  <!-- 📊 ÁREA DE DADOS -->
+  <!-- 📊 DADOS -->
   <div id="dados" style="display:none;">
-    <h2>Consultas Financeiras</h2>
+    <div class="topo">
+      <h2>Dashboard de Gastos</h2>
+      <button id="btnVoltar" class="btn-voltar">Sair</button>
+    </div>
 
-    <!-- 🔹 MENU -->
-    <div id="menu">
-      <button onclick="carregarView('banco')">Gastos por Banco</button>
-      <!--<button onclick="carregarView('base')">Transações Base</button>-->
+    <div class="botoes">
+      <button onclick="carregarView('banco')">Banco</button>
+      <!--<button onclick="carregarView('base')">Base</button>-->
       <button onclick="carregarView('recorrentes')">Recorrentes</button>
       <button onclick="carregarView('fornecedores')">Fornecedores</button>
       <button onclick="carregarView('duplicadas')">Duplicadas</button>
-      <button id="btnVoltar" class="btn-voltar">⬅ Voltar para Login</button>
     </div>
 
-    <hr>
-
-    <!-- 🔹 RESULTADO -->
-    <pre id="resultado"></pre>
+    <div id="resultado"></div>
   </div>
 
+</div>
+
+<script src="app.js"></script>
 </body>
 </html>
