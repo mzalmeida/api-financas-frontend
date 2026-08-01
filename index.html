@@ -2,45 +2,51 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Finanças</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Financas</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div class="container">
+    <section id="login" class="card">
+      <h1>Login</h1>
+      <p class="subtitulo">Entre com sua conta configurada no Supabase Auth.</p>
 
-<div class="container">
+      <form id="loginForm" novalidate>
+        <label for="usuario">Email</label>
+        <input type="email" id="usuario" name="usuario" placeholder="voce@exemplo.com" autocomplete="username" required>
 
-  <!-- 🔐 LOGIN -->
-  <div id="login">
-    <h2>Login</h2>
+        <label for="senha">Senha</label>
+        <input type="password" id="senha" name="senha" placeholder="Sua senha" autocomplete="current-password" required>
 
-    <input type="text" id="usuario" placeholder="Usuário">
-    <input type="password" id="senha" placeholder="Senha">
-    <input type="text" id="linkedin" placeholder="LinkedIn">
+        <button type="submit" id="loginButton">Entrar</button>
+      </form>
 
-    <button onclick="login()">Entrar</button>
-    <p id="msg" class="erro"></p>
+      <p id="msg" class="mensagem" aria-live="polite"></p>
+    </section>
+
+    <section id="dados" class="card hidden">
+      <div class="topo">
+        <div>
+          <h1>Dashboard de Gastos</h1>
+          <p id="sessionInfo" class="subtitulo"></p>
+        </div>
+        <button id="btnSair" class="btn-secundario" type="button">Sair</button>
+      </div>
+
+      <div class="botoes" id="viewButtons">
+        <button type="button" data-view="banco">Banco</button>
+        <button type="button" data-view="base">Base</button>
+        <button type="button" data-view="recorrentes">Recorrentes</button>
+        <button type="button" data-view="fornecedores">Fornecedores</button>
+        <button type="button" data-view="duplicadas">Duplicadas</button>
+      </div>
+
+      <p id="dashboardMsg" class="mensagem" aria-live="polite"></p>
+      <div id="resultado" class="resultado"></div>
+    </section>
   </div>
 
-  <!-- 📊 DADOS -->
-  <div id="dados" style="display:none;">
-    <div class="topo">
-      <h2>Dashboard de Gastos</h2>
-      <button id="btnVoltar" class="btn-voltar">Sair</button>
-    </div>
-
-    <div class="botoes">
-      <button onclick="carregarView('banco')">Banco</button>
-      <!--<button onclick="carregarView('base')">Base</button>-->
-      <button onclick="carregarView('recorrentes')">Recorrentes</button>
-      <button onclick="carregarView('fornecedores')">Fornecedores</button>
-      <button onclick="carregarView('duplicadas')">Duplicadas</button>
-    </div>
-
-    <div id="resultado"></div>
-  </div>
-
-</div>
-
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
