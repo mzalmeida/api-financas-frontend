@@ -13,6 +13,7 @@ Frontend estatico em HTML, CSS e JavaScript puro para login, restauracao de sess
 - a renderizacao das tabelas usa APIs de DOM com `textContent`, sem `innerHTML` para os dados das views.
 - o fluxo oficial agora inclui `Esqueci minha senha`, solicitacao de e-mail, tela de nova senha, confirmacao e tratamento de `PASSWORD_RECOVERY`.
 - a senha nova segue direto para o Supabase Auth no navegador e nao passa pelo backend.
+- em producao, o redirect de recuperacao foi fixado explicitamente em `https://api-financas-frontend.onrender.com`.
 
 ## API esperada
 
