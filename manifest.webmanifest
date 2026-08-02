@@ -4,8 +4,8 @@
   "description": "RebeccaCash e o portal financeiro com dashboard executivo, importacoes OFX e operacao segura.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#07090d",
-  "theme_color": "#07090d",
+  "background_color": "#F8FAFC",
+  "theme_color": "#F8FAFC",
   "icons": [
     {
       "src": "assets/brand/android-chrome-192x192.png",
