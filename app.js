@@ -1,5 +1,5 @@
 const STORAGE_KEY = "api-financas.session";
-const PUBLIC_BACKEND_URL = "https://api-financas-backend.onrender.com";
+const PUBLIC_BACKEND_URL = "https://api-financas-backend1.onrender.com";
 const LOCAL_BACKEND_URL = "http://127.0.0.1:3000";
 
 function resolveApiUrl() {
