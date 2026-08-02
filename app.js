@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const STORAGE_KEY = "api-financas.session";
 const RECOVERY_CONTEXT_KEY = "api-financas.recovery-context";
 const PUBLIC_BACKEND_URL = "https://api-financas-backend1.onrender.com";
+const PUBLIC_FRONTEND_URL = "https://api-financas-frontend.onrender.com";
 const LOCAL_BACKEND_URL = "http://127.0.0.1:3000";
 const SUPABASE_URL = "https://gbnzacdsxsivwwsquxky.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdibnphY2RzeHNpdnd3c3F1eGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1OTEwOTgsImV4cCI6MjEwMTE2NzA5OH0.hGoMQxS8eKIjyEytuaGAxI0TjkFT5OZp5coiUEbr_U8";
@@ -18,9 +19,11 @@ function resolveApiUrl() {
 }
 
 function resolveRecoveryRedirectUrl() {
-  const url = new URL(window.location.href);
-  url.hash = "";
-  return url.toString();
+  const { hostname, protocol, host } = window.location;
+  if (hostname === "localhost" || hostname === "127.0.0.1") {
+    return `${protocol}//${host}`;
+  }
+  return PUBLIC_FRONTEND_URL;
 }
 
 const API_URL = resolveApiUrl();
