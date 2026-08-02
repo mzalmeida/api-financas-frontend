@@ -1,34 +1,153 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const STORAGE_KEY = "api-financas.session";
-const RECOVERY_CONTEXT_KEY = "api-financas.recovery-context";
-const SUPABASE_RECOVERY_STORAGE_KEY = "api-financas.supabase.recovery";
+const STORAGE_KEY = "portal-financeiro.session";
+const RECOVERY_CONTEXT_KEY = "portal-financeiro.recovery";
+const SUPABASE_RECOVERY_STORAGE_KEY = "portal-financeiro.supabase.recovery";
 const PUBLIC_BACKEND_URL = "https://api-financas-backend1.onrender.com";
 const PUBLIC_FRONTEND_URL = "https://api-financas-frontend.onrender.com";
 const LOCAL_BACKEND_URL = "http://127.0.0.1:3000";
 const SUPABASE_URL = "https://gbnzacdsxsivwwsquxky.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdibnphY2RzeHNpdnd3c3F1eGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1OTEwOTgsImV4cCI6MjEwMTE2NzA5OH0.hGoMQxS8eKIjyEytuaGAxI0TjkFT5OZp5coiUEbr_U8";
 const PASSWORD_MIN_LENGTH = 8;
-const GMAIL_FEATURE_ENABLED = false;
+const DEFAULT_THEME = "olive";
+const CATALOG_PAGE_SIZE = 10;
+const HISTORY_PAGE_SIZE = 8;
+
+const SECTION_TITLES = {
+  dashboard: "Dashboard",
+  imports: "Importacoes",
+  history: "Historico",
+  categories: "Categorias",
+  accounts: "Contas",
+  cards: "Cartoes",
+  suppliers: "Fornecedores",
+  settings: "Configuracoes",
+  profile: "Perfil",
+};
+
+const ENTITY_CONFIG = {
+  categories: {
+    title: "Categoria",
+    tableId: "table-categories",
+    paginationId: "pagination-categories",
+    searchId: "search-categories",
+    fields: [
+      { name: "name", label: "Nome", type: "text", required: true },
+      { name: "movement_type", label: "Tipo de movimento", type: "select", options: ["expense", "income", "transfer", "adjustment"], required: true },
+      { name: "color_hex", label: "Cor", type: "text", placeholder: "#295B56" },
+      { name: "icon_name", label: "Icone", type: "text", placeholder: "wallet" },
+      { name: "display_order", label: "Ordem", type: "number", placeholder: "0" },
+      { name: "is_active", label: "Ativa", type: "checkbox" },
+    ],
+    columns: [
+      { key: "name", label: "Nome" },
+      { key: "movement_type", label: "Tipo" },
+      { key: "color_hex", label: "Cor" },
+      { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
+    ],
+  },
+  accounts: {
+    title: "Conta",
+    tableId: "table-accounts",
+    paginationId: "pagination-accounts",
+    searchId: "search-accounts",
+    fields: [
+      { name: "name", label: "Nome", type: "text", required: true },
+      { name: "financial_institution_id", label: "Instituicao", type: "institution-select" },
+      { name: "account_type", label: "Tipo", type: "select", options: ["checking", "payment", "savings", "investment", "cash", "other"], required: true },
+      { name: "external_identifier", label: "Identificador externo", type: "text" },
+      { name: "masked_account_number", label: "Conta mascarada", type: "text" },
+      { name: "masked_branch_number", label: "Agencia mascarada", type: "text" },
+      { name: "opening_balance", label: "Saldo inicial", type: "number", placeholder: "0" },
+      { name: "opening_balance_date", label: "Data do saldo inicial", type: "date" },
+      { name: "is_active", label: "Ativa", type: "checkbox" },
+    ],
+    columns: [
+      { key: "name", label: "Conta" },
+      { key: "account_type", label: "Tipo" },
+      { key: "masked_account_number", label: "Numero" },
+      { key: "currency_code", label: "Moeda" },
+      { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
+    ],
+  },
+  cards: {
+    title: "Cartao",
+    tableId: "table-cards",
+    paginationId: "pagination-cards",
+    searchId: "search-cards",
+    fields: [
+      { name: "name", label: "Nome", type: "text", required: true },
+      { name: "financial_institution_id", label: "Instituicao", type: "institution-select" },
+      { name: "paying_account_id", label: "Conta pagadora", type: "account-select" },
+      { name: "brand", label: "Bandeira", type: "text" },
+      { name: "last_four_digits", label: "Ultimos 4 digitos", type: "text", placeholder: "1234" },
+      { name: "statement_closing_day", label: "Dia de fechamento", type: "number" },
+      { name: "statement_due_day", label: "Dia de vencimento", type: "number" },
+      { name: "external_identifier", label: "Identificador externo", type: "text" },
+      { name: "is_active", label: "Ativo", type: "checkbox" },
+    ],
+    columns: [
+      { key: "name", label: "Cartao" },
+      { key: "brand", label: "Bandeira" },
+      { key: "last_four_digits", label: "Final" },
+      { key: "statement_due_day", label: "Vencimento" },
+      { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativo", "success") : badge("Inativo", "warning") },
+    ],
+  },
+  counterparties: {
+    title: "Fornecedor",
+    tableId: "table-counterparties",
+    paginationId: "pagination-counterparties",
+    searchId: "search-counterparties",
+    fields: [
+      { name: "display_name", label: "Nome exibido", type: "text", required: true },
+      { name: "counterparty_type", label: "Tipo", type: "select", options: ["merchant", "individual", "company", "bank", "internal_account", "other"], required: true },
+      { name: "external_identifier", label: "Identificador externo", type: "text" },
+      { name: "masked_document", label: "Documento mascarado", type: "text" },
+      { name: "notes", label: "Observacoes", type: "textarea" },
+    ],
+    columns: [
+      { key: "display_name", label: "Fornecedor" },
+      { key: "counterparty_type", label: "Tipo" },
+      { key: "masked_document", label: "Documento" },
+      { key: "updated_at", label: "Atualizado", formatter: (value) => formatDateTime(value) },
+    ],
+  },
+  institutions: {
+    title: "Instituicao",
+    tableId: "table-institutions",
+    searchId: "search-institutions",
+    fields: [
+      { name: "name", label: "Nome", type: "text", required: true },
+      { name: "institution_type", label: "Tipo", type: "select", options: ["bank", "card_issuer", "brokerage", "digital_wallet", "other"], required: true },
+      { name: "external_code", label: "Codigo externo", type: "text" },
+      { name: "country_code", label: "Pais", type: "text", placeholder: "BR" },
+      { name: "is_active", label: "Ativa", type: "checkbox" },
+    ],
+    columns: [
+      { key: "name", label: "Instituicao" },
+      { key: "institution_type", label: "Tipo" },
+      { key: "country_code", label: "Pais" },
+      { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
+    ],
+  },
+};
 
 function resolveApiUrl() {
-  const { hostname } = window.location;
-  return hostname === "localhost" || hostname === "127.0.0.1" ? LOCAL_BACKEND_URL : PUBLIC_BACKEND_URL;
+  return ["localhost", "127.0.0.1"].includes(window.location.hostname) ? LOCAL_BACKEND_URL : PUBLIC_BACKEND_URL;
 }
 
 function resolveRecoveryRedirectUrl() {
   const { hostname, protocol, host } = window.location;
-  return hostname === "localhost" || hostname === "127.0.0.1" ? `${protocol}//${host}` : PUBLIC_FRONTEND_URL;
+  return ["localhost", "127.0.0.1"].includes(hostname) ? `${protocol}//${host}` : PUBLIC_FRONTEND_URL;
 }
 
 const API_URL = resolveApiUrl();
 const RECOVERY_REDIRECT_URL = resolveRecoveryRedirectUrl();
 const initialAuthParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-const initialPageParams = new URLSearchParams(window.location.search);
 const initialAuthLinkType = initialAuthParams.get("type");
 const initialAuthErrorCode = initialAuthParams.get("error_code");
 const initialAuthErrorDescription = initialAuthParams.get("error_description");
-const initialGmailOauthStatus = initialPageParams.get("gmail_oauth");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -63,23 +182,26 @@ const elements = {
   confirmPasswordInput: document.getElementById("confirmPassword"),
   resetPasswordMessage: document.getElementById("resetPasswordMsg"),
   backToLoginFromResetButton: document.getElementById("backToLoginFromReset"),
-  dashboardMessage: document.getElementById("dashboardMsg"),
+  pageTitle: document.getElementById("pageTitle"),
   sessionInfo: document.getElementById("sessionInfo"),
-  logoutButton: document.getElementById("btnSair"),
+  globalMessage: document.getElementById("globalMessage"),
   menuToggle: document.getElementById("menuToggle"),
-  mainNav: document.getElementById("mainNav"),
-  navLinks: Array.from(document.querySelectorAll(".nav-link")),
+  sidebar: document.getElementById("sidebar"),
+  navButtons: Array.from(document.querySelectorAll(".nav-item[data-section]")),
+  sidebarLogout: document.getElementById("sidebarLogout"),
+  refreshAllButton: document.getElementById("refreshAllButton"),
   statsGrid: document.getElementById("statsGrid"),
+  dashboardGreeting: document.getElementById("dashboardGreeting"),
+  lastImportBadge: document.getElementById("lastImportBadge"),
+  monthlyTrend: document.getElementById("monthlyTrend"),
+  categorySummary: document.getElementById("categorySummary"),
   latestTransactions: document.getElementById("latestTransactions"),
+  recentImports: document.getElementById("recentImports"),
   bankSummary: document.getElementById("bankSummary"),
-  transactionsTable: document.getElementById("transactionsTable"),
-  recurringTable: document.getElementById("recurringTable"),
-  suppliersTable: document.getElementById("suppliersTable"),
-  duplicatesTable: document.getElementById("duplicatesTable"),
   institutionSelect: document.getElementById("institutionSelect"),
   accountSelect: document.getElementById("accountSelect"),
-  refreshOptionsButton: document.getElementById("refreshOptions"),
-  toggleCreateAccountButton: document.getElementById("toggleCreateAccount"),
+  refreshImportOptions: document.getElementById("refreshImportOptions"),
+  toggleAccountForm: document.getElementById("toggleAccountForm"),
   createAccountForm: document.getElementById("createAccountForm"),
   createAccountName: document.getElementById("createAccountName"),
   createAccountType: document.getElementById("createAccountType"),
@@ -95,51 +217,84 @@ const elements = {
   clearFileButton: document.getElementById("clearFileButton"),
   previewPanel: document.getElementById("previewPanel"),
   confirmImportButton: document.getElementById("confirmImportButton"),
-  importsHistory: document.getElementById("importsHistory"),
+  historySearch: document.getElementById("historySearch"),
+  historyStatusFilter: document.getElementById("historyStatusFilter"),
   refreshHistoryButton: document.getElementById("refreshHistoryButton"),
-  gmailMessage: document.getElementById("gmailMsg"),
-  gmailStatusCard: document.getElementById("gmailStatusCard"),
-  gmailConnectButton: document.getElementById("gmailConnectButton"),
-  gmailDisconnectButton: document.getElementById("gmailDisconnectButton"),
-  gmailRefreshButton: document.getElementById("gmailRefreshButton"),
-  gmailSyncButton: document.getElementById("gmailSyncButton"),
-  gmailNubankAccount: document.getElementById("gmailNubankAccount"),
-  gmailInterAccount: document.getElementById("gmailInterAccount"),
-  gmailMessagesTable: document.getElementById("gmailMessagesTable"),
+  historyTable: document.getElementById("historyTable"),
+  historyDetails: document.getElementById("historyDetails"),
+  historyPrevPage: document.getElementById("historyPrevPage"),
+  historyNextPage: document.getElementById("historyNextPage"),
+  historyPaginationLabel: document.getElementById("historyPaginationLabel"),
+  settingsForm: document.getElementById("settingsForm"),
+  defaultCurrencyCode: document.getElementById("defaultCurrencyCode"),
+  timeZone: document.getElementById("timeZone"),
+  themePreference: document.getElementById("themePreference"),
+  compactCards: document.getElementById("compactCards"),
+  saveSettingsButton: document.getElementById("saveSettingsButton"),
+  settingsMessage: document.getElementById("settingsMessage"),
+  profileForm: document.getElementById("profileForm"),
+  profileDisplayName: document.getElementById("profileDisplayName"),
+  profileEmail: document.getElementById("profileEmail"),
+  profileVersion: document.getElementById("profileVersion"),
+  saveProfileButton: document.getElementById("saveProfileButton"),
+  profileMessage: document.getElementById("profileMessage"),
+  passwordForm: document.getElementById("passwordForm"),
+  profilePassword: document.getElementById("profilePassword"),
+  profilePasswordConfirm: document.getElementById("profilePasswordConfirm"),
+  savePasswordButton: document.getElementById("savePasswordButton"),
+  passwordMessage: document.getElementById("passwordMessage"),
+  drawer: document.getElementById("entityDrawer"),
+  drawerTitle: document.getElementById("drawerTitle"),
+  drawerEyebrow: document.getElementById("drawerEyebrow"),
+  closeDrawer: document.getElementById("closeDrawer"),
+  drawerMessage: document.getElementById("drawerMessage"),
+  entityForm: document.getElementById("entityForm"),
+  toastStack: document.getElementById("toastStack"),
   sections: {
-    overview: document.getElementById("section-overview"),
-    transactions: document.getElementById("section-transactions"),
+    dashboard: document.getElementById("section-dashboard"),
     imports: document.getElementById("section-imports"),
-    gmail: document.getElementById("section-gmail"),
-    recurring: document.getElementById("section-recurring"),
+    history: document.getElementById("section-history"),
+    categories: document.getElementById("section-categories"),
+    accounts: document.getElementById("section-accounts"),
+    cards: document.getElementById("section-cards"),
     suppliers: document.getElementById("section-suppliers"),
-    duplicates: document.getElementById("section-duplicates"),
+    settings: document.getElementById("section-settings"),
+    profile: document.getElementById("section-profile"),
   },
 };
 
 const state = {
-  activeSection: "overview",
+  activeSection: "dashboard",
   session: loadStoredSession(),
   recoveryContext: loadRecoveryContext(),
   selectedFile: null,
   preview: null,
+  overview: null,
+  profile: null,
   options: { institutions: [], accounts: [] },
-  gmail: {
-    integration: null,
-    accounts: [],
-    institutions: [],
-    messages: [],
+  history: [],
+  historyPage: 1,
+  selectedImportDetails: null,
+  catalogs: {
+    categories: catalogState(),
+    accounts: catalogState(),
+    cards: catalogState(),
+    counterparties: catalogState(),
+    institutions: catalogState(),
   },
-  datasets: {
-    banco: [],
-    base: [],
-    recorrentes: [],
-    fornecedores: [],
-    duplicadas: [],
-    imports: [],
+  drawer: {
+    entity: null,
+    item: null,
   },
-  detailCache: new Map(),
 };
+
+function catalogState() {
+  return {
+    items: [],
+    pagination: { page: 1, total_pages: 1, total: 0 },
+    search: "",
+  };
+}
 
 function loadStoredSession() {
   try {
@@ -159,14 +314,21 @@ function loadRecoveryContext() {
   }
 }
 
-function storeSession(session) {
+async function storeSession(session) {
   state.session = session;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  if (session?.access_token && session?.refresh_token) {
+    await supabase.auth.setSession({
+      access_token: session.access_token,
+      refresh_token: session.refresh_token,
+    }).catch(() => null);
+  }
 }
 
-function clearSession() {
+async function clearSession() {
   state.session = null;
   localStorage.removeItem(STORAGE_KEY);
+  await supabase.auth.signOut().catch(() => null);
 }
 
 function storeRecoveryContext(context) {
@@ -189,10 +351,13 @@ function setMessage(target, message, type = "info") {
   target.dataset.state = message ? type : "";
 }
 
-function clearMessages() {
-  [elements.loginMessage, elements.forgotPasswordMessage, elements.resetPasswordMessage, elements.dashboardMessage, elements.importMessage, elements.gmailMessage]
-    .filter(Boolean)
-    .forEach((element) => setMessage(element, ""));
+function showToast(message, tone = "info") {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.dataset.tone = tone;
+  toast.textContent = message;
+  elements.toastStack.appendChild(toast);
+  window.setTimeout(() => toast.remove(), 4200);
 }
 
 function setLoading(button, isLoading, loadingText = "Carregando...") {
@@ -224,7 +389,6 @@ function showLogin(options = {}) {
   if (options.prefillEmail) {
     elements.usuarioInput.value = options.prefillEmail;
   }
-
   if (options.message) {
     setMessage(elements.loginMessage, options.message, options.messageType ?? "info");
   }
@@ -252,6 +416,10 @@ function showAppShell() {
   elements.sessionInfo.textContent = state.session?.user?.email || "Sessao ativa";
 }
 
+function applyTheme(themeName = DEFAULT_THEME) {
+  document.body.dataset.theme = themeName;
+}
+
 function createNode(tagName, className, text) {
   const node = document.createElement(tagName);
   if (className) node.className = className;
@@ -259,15 +427,14 @@ function createNode(tagName, className, text) {
   return node;
 }
 
-function formatCurrency(value) {
-  if (typeof value !== "number" || Number.isNaN(value)) return "-";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+function badge(text, tone = "neutral") {
+  return `<span class="status-badge ${tone}">${escapeHtml(text)}</span>`;
 }
 
-function formatDateTime(value) {
-  if (!value) return "-";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+function formatCurrency(value) {
+  const number = Number(value ?? 0);
+  if (!Number.isFinite(number)) return "-";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(number);
 }
 
 function formatDate(value) {
@@ -276,358 +443,55 @@ function formatDate(value) {
   return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(date);
 }
 
-function getRowAmount(row) {
-  for (const key of ["amount", "valor", "total_gasto", "total_despesa", "total_receita"]) {
-    const value = Number(row?.[key]);
-    if (Number.isFinite(value)) return value;
-  }
-  return 0;
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
 }
 
-function getRowDescription(row) {
-  return String(
-    row?.original_description
-      ?? row?.normalized_description
-      ?? row?.descricao
-      ?? row?.fornecedor
-      ?? row?.banco
-      ?? "-",
-  );
+function formatDuration(start, end) {
+  if (!start) return "-";
+  const startDate = new Date(start);
+  const endDate = end ? new Date(end) : new Date();
+  const seconds = Math.max(0, Math.round((endDate - startDate) / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${minutes}m ${remaining}s`;
 }
 
-function renderEmpty(target, message) {
-  target.replaceChildren(createNode("div", "empty-panel", message));
+function normalizeText(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .trim();
 }
 
-function renderTable(target, rows, emptyMessage = "Nenhum dado encontrado.") {
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function renderEmpty(target, title, description) {
   target.replaceChildren();
-  if (!Array.isArray(rows) || rows.length === 0) {
-    renderEmpty(target, emptyMessage);
-    return;
-  }
-
-  const columns = Object.keys(rows[0]);
-  const wrap = createNode("div", "data-table-wrap");
-  const table = document.createElement("table");
-  const thead = document.createElement("thead");
-  const headRow = document.createElement("tr");
-
-  columns.forEach((column) => {
-    headRow.appendChild(createNode("th", "", column));
-  });
-
-  thead.appendChild(headRow);
-  table.appendChild(thead);
-
-  const tbody = document.createElement("tbody");
-  rows.forEach((row) => {
-    const tr = document.createElement("tr");
-    columns.forEach((column) => {
-      const td = document.createElement("td");
-      td.textContent = row[column] == null ? "-" : String(row[column]);
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
-  });
-
-  table.appendChild(tbody);
-  wrap.appendChild(table);
-  target.appendChild(wrap);
-}
-
-function renderStats() {
-  const rows = state.datasets.base;
-  const incomes = rows.filter((row) => getRowAmount(row) > 0).reduce((sum, row) => sum + getRowAmount(row), 0);
-  const expenses = rows.filter((row) => getRowAmount(row) < 0).reduce((sum, row) => sum + Math.abs(getRowAmount(row)), 0);
-  const balance = rows.reduce((sum, row) => sum + getRowAmount(row), 0);
-  const institutions = new Set(state.options.accounts.map((account) => account.financial_institution_id).filter(Boolean)).size;
-  const cards = [
-    ["Transacoes", String(rows.length)],
-    ["Receitas", formatCurrency(incomes)],
-    ["Despesas", formatCurrency(expenses)],
-    ["Saldo", formatCurrency(balance)],
-    ["Instituicoes", String(institutions)],
-  ];
-
-  elements.statsGrid.replaceChildren(...cards.map(([label, value]) => {
-    const card = createNode("article", "stat-card");
-    card.appendChild(createNode("p", "stat-label", label));
-    card.appendChild(createNode("p", "stat-value", value));
-    return card;
-  }));
-}
-
-function renderLatestTransactions() {
-  const rows = [...state.datasets.base].slice(0, 6);
-  elements.latestTransactions.replaceChildren();
-
-  if (!rows.length) {
-    renderEmpty(elements.latestTransactions, "Nenhuma transacao encontrada.");
-    return;
-  }
-
-  const list = createNode("div", "simple-list");
-  rows.forEach((row) => {
-    const item = createNode("article", "simple-item");
-    item.appendChild(createNode("strong", "", getRowDescription(row)));
-    const meta = createNode("div", "meta-row");
-    meta.appendChild(createNode("span", "", formatDate(row.occurred_on ?? row.data)));
-    meta.appendChild(createNode("span", "", formatCurrency(getRowAmount(row))));
-    item.appendChild(meta);
-    list.appendChild(item);
-  });
-  elements.latestTransactions.appendChild(list);
-}
-
-function renderBankSummary() {
-  renderTable(elements.bankSummary, state.datasets.banco, "Nenhum dado bancario encontrado.");
-}
-
-function renderTransactions() {
-  renderTable(elements.transactionsTable, state.datasets.base, "Nenhuma transacao encontrada.");
-}
-
-function renderAnalyticSection(target, rows, message) {
-  renderTable(target, rows, message);
-}
-
-function renderOptions() {
-  const previousInstitutionId = elements.institutionSelect.value;
-  const previousAccountId = elements.accountSelect.value;
-  const institutionPlaceholder = createNode("option", "", "Selecione a instituicao");
-  institutionPlaceholder.value = "";
-  const accountPlaceholder = createNode("option", "", state.options.accounts.length ? "Selecione a conta" : "Nenhuma conta disponivel");
-  accountPlaceholder.value = "";
-
-  elements.institutionSelect.replaceChildren(institutionPlaceholder);
-  state.options.institutions.forEach((institution) => {
-    const option = createNode("option", "", institution.name);
-    option.value = institution.id;
-    elements.institutionSelect.appendChild(option);
-  });
-
-  elements.accountSelect.replaceChildren(accountPlaceholder);
-  state.options.accounts.forEach((account) => {
-    const option = createNode("option", "", `${account.name} (${account.account_type})`);
-    option.value = account.id;
-    option.dataset.institutionId = account.financial_institution_id ?? "";
-    elements.accountSelect.appendChild(option);
-  });
-
-  if (previousInstitutionId && state.options.institutions.some((item) => item.id === previousInstitutionId)) {
-    elements.institutionSelect.value = previousInstitutionId;
-  }
-
-  if (previousAccountId && state.options.accounts.some((item) => item.id === previousAccountId)) {
-    elements.accountSelect.value = previousAccountId;
-  }
-}
-
-function renderSelectedFile() {
-  const file = state.selectedFile;
-  elements.selectedFileCard.replaceChildren();
-
-  if (!file) {
-    elements.selectedFileCard.classList.add("hidden");
-    return;
-  }
-
-  elements.selectedFileCard.classList.remove("hidden");
-  const title = createNode("strong", "", file.name);
-  const meta = createNode("div", "meta-row");
-  meta.appendChild(createNode("span", "", `${(file.size / 1024).toFixed(1)} KB`));
-  meta.appendChild(createNode("span", "", new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date())));
-  elements.selectedFileCard.append(title, meta);
-}
-
-function buildPreviewPill(text, tone = "info") {
-  const pill = createNode("span", "pill", text);
-  pill.dataset.tone = tone;
-  return pill;
-}
-
-function renderPreview() {
-  const preview = state.preview;
-  elements.previewPanel.replaceChildren();
-  elements.confirmImportButton.disabled = !preview?.import_id || preview?.status === "failed";
-
-  if (!preview) {
-    renderEmpty(elements.previewPanel, "Nenhum preview gerado ainda.");
-    return;
-  }
-
-  const summary = createNode("div", "preview-card");
-  const header = createNode("div", "section-head compact");
-  const headerText = createNode("div");
-  headerText.appendChild(createNode("p", "eyebrow", "Arquivo analisado"));
-  headerText.appendChild(createNode("h3", "", preview.file.name));
-  header.appendChild(headerText);
-  const headerMeta = createNode("div", "meta-row");
-  headerMeta.appendChild(buildPreviewPill(preview.status, preview.status.includes("failed") ? "danger" : "info"));
-  headerMeta.appendChild(buildPreviewPill(preview.institution.detected_label || "Instituicao pendente", preview.institution.detected_label ? "success" : "warning"));
-  header.appendChild(headerMeta);
-  summary.appendChild(header);
-
-  const cards = createNode("div", "card-grid");
-  const metrics = [
-    ["Conta", preview.financial_account.name],
-    ["Periodo", `${formatDate(preview.period.start_date)} a ${formatDate(preview.period.end_date)}`],
-    ["Saldo", formatCurrency(preview.ledger_balance)],
-    ["Linhas validas", String(preview.totals.valid_rows)],
-    ["Linhas duplicadas", String(preview.totals.duplicate_rows)],
-    ["Linhas invalidas", String(preview.totals.invalid_rows)],
-    ["Receitas", formatCurrency(preview.totals.total_income)],
-    ["Despesas", formatCurrency(preview.totals.total_expense)],
-  ];
-
-  metrics.forEach(([label, value]) => {
-    const card = createNode("div", "result-card");
-    card.appendChild(createNode("p", "stat-label", label));
-    card.appendChild(createNode("strong", "", value || "-"));
-    cards.appendChild(card);
-  });
-  summary.appendChild(cards);
-  elements.previewPanel.appendChild(summary);
-
-  if (preview.warnings?.length) {
-    const warningCard = createNode("div", "preview-card");
-    warningCard.appendChild(createNode("h3", "", "Avisos"));
-    const list = createNode("div", "simple-list");
-    preview.warnings.forEach((warning) => list.appendChild(createNode("div", "simple-item", warning)));
-    warningCard.appendChild(list);
-    elements.previewPanel.appendChild(warningCard);
-  }
-
-  const tableContainer = createNode("div", "preview-card");
-  tableContainer.appendChild(createNode("h3", "", "Linhas analisadas"));
-  const region = createNode("div", "table-region");
-  tableContainer.appendChild(region);
-  elements.previewPanel.appendChild(tableContainer);
-  renderTable(region, preview.preview_rows, "Nenhuma linha retornada no preview.");
-}
-
-function renderImportHistory() {
-  const items = state.datasets.imports;
-  elements.importsHistory.replaceChildren();
-
-  if (!items.length) {
-    renderEmpty(elements.importsHistory, "Nenhuma importacao registrada ainda.");
-    return;
-  }
-
-  const list = createNode("div", "simple-list");
-  items.forEach((item) => {
-    const card = createNode("article", "history-card");
-    card.appendChild(createNode("strong", "", item.file?.name || "Arquivo sem nome"));
-    const meta = createNode("div", "meta-row");
-    meta.appendChild(createNode("span", "", item.institution?.name || "Instituicao nao informada"));
-    meta.appendChild(createNode("span", "", item.financial_account?.name || "Conta nao informada"));
-    meta.appendChild(createNode("span", "", formatDateTime(item.started_at)));
-    card.appendChild(meta);
-
-    const totals = createNode("div", "meta-row");
-    totals.appendChild(buildPreviewPill(`Status: ${item.status}`, item.status.includes("error") || item.status === "failed" ? "warning" : "info"));
-    totals.appendChild(createNode("span", "", `Total: ${item.totals.total_rows}`));
-    totals.appendChild(createNode("span", "", `Importadas: ${item.totals.accepted_rows}`));
-    totals.appendChild(createNode("span", "", `Duplicadas: ${item.totals.duplicate_rows}`));
-    totals.appendChild(createNode("span", "", `Rejeitadas: ${item.totals.rejected_rows}`));
-    card.appendChild(totals);
-
-    const actions = createNode("div", "inline-actions");
-    const detailsButton = createNode("button", "btn btn-secondary", "Detalhes");
-    detailsButton.dataset.importId = item.id;
-    detailsButton.dataset.action = "details";
-    actions.appendChild(detailsButton);
-    if (item.status === "processing" || item.status === "pending") {
-      const cancelButton = createNode("button", "btn btn-ghost", "Cancelar");
-      cancelButton.dataset.importId = item.id;
-      cancelButton.dataset.action = "cancel";
-      actions.appendChild(cancelButton);
-    }
-    card.appendChild(actions);
-    list.appendChild(card);
-  });
-
-  elements.importsHistory.appendChild(list);
-}
-
-function populateGmailAccountSelect(target, selectedValue = "", placeholderLabel = "Selecione a conta") {
-  const placeholder = createNode("option", "", placeholderLabel);
-  placeholder.value = "";
-  target.replaceChildren(placeholder);
-
-  state.options.accounts.forEach((account) => {
-    const option = createNode("option", "", `${account.name} (${account.account_type})`);
-    option.value = account.id;
-    option.dataset.institutionId = account.financial_institution_id ?? "";
-    target.appendChild(option);
-  });
-
-  if (selectedValue && state.options.accounts.some((item) => item.id === selectedValue)) {
-    target.value = selectedValue;
-  }
-}
-
-function renderGmailStatus() {
-  const integration = state.gmail.integration;
-  elements.gmailStatusCard.replaceChildren();
-
-  if (!integration) {
-    renderEmpty(elements.gmailStatusCard, "Nenhuma integracao Gmail carregada.");
-    populateGmailAccountSelect(elements.gmailNubankAccount);
-    populateGmailAccountSelect(elements.gmailInterAccount);
-    return;
-  }
-
-  const card = createNode("div", "preview-card");
-  const cards = createNode("div", "card-grid");
-  const metrics = [
-    ["Conectado", integration.connected ? "Sim" : "Nao"],
-    ["Conta Gmail", integration.gmail_email_masked || "Nao conectada"],
-    ["Ultima sincronizacao", formatDateTime(integration.last_sync_at)],
-    ["Status", integration.last_sync_status || "never"],
-  ];
-
-  metrics.forEach(([label, value]) => {
-    const metricCard = createNode("div", "result-card");
-    metricCard.appendChild(createNode("p", "stat-label", label));
-    metricCard.appendChild(createNode("strong", "", value));
-    cards.appendChild(metricCard);
-  });
-
-  card.appendChild(cards);
-  elements.gmailStatusCard.appendChild(card);
-
-  populateGmailAccountSelect(elements.gmailNubankAccount, integration.account_mapping?.nubank || "");
-  populateGmailAccountSelect(elements.gmailInterAccount, integration.account_mapping?.inter || "");
-}
-
-function renderGmailMessages() {
-  const rows = state.gmail.messages.map((item) => ({
-    arquivo: item.file_name,
-    banco: item.institution_slug || "-",
-    status: item.status,
-    recebido_em: formatDateTime(item.received_at),
-    import_id: item.import_id || "-",
-    erro: item.error_summary || "-",
-  }));
-  renderTable(elements.gmailMessagesTable, rows, "Nenhum anexo Gmail localizado ainda.");
-}
-
-function syncInstitutionWithAccount() {
-  const selectedOption = elements.accountSelect.selectedOptions[0];
-  if (selectedOption?.dataset.institutionId) {
-    elements.institutionSelect.value = selectedOption.dataset.institutionId;
-  }
+  const box = createNode("div", "empty-state");
+  box.appendChild(createNode("strong", "", title));
+  box.appendChild(createNode("span", "", description));
+  target.appendChild(box);
 }
 
 async function apiFetch(pathname, options = {}) {
   const {
     method = "GET",
     body,
+    headers = {},
     auth = true,
     retryOnUnauthorized = true,
-    headers = {},
   } = options;
 
   if (auth) {
@@ -658,20 +522,16 @@ async function apiFetch(pathname, options = {}) {
 }
 
 async function ensureSession() {
-  if (!state.session) {
-    throw new Error("missing_session");
-  }
+  if (!state.session) throw new Error("missing_session");
   if (isExpired(state.session)) {
     const refreshed = await refreshSession();
-    if (!refreshed) {
-      throw new Error("expired_session");
-    }
+    if (!refreshed) throw new Error("expired_session");
   }
 }
 
 async function refreshSession() {
   if (!state.session?.refresh_token) {
-    clearSession();
+    await clearSession();
     return false;
   }
 
@@ -683,11 +543,11 @@ async function refreshSession() {
   });
 
   if (!response.ok || !payload?.session) {
-    clearSession();
+    await clearSession();
     return false;
   }
 
-  storeSession({ ...payload.session, user: payload.user });
+  await storeSession({ ...payload.session, user: payload.user });
   return true;
 }
 
@@ -703,126 +563,860 @@ async function signInThroughBackend(email, password) {
     return { ok: false, payload };
   }
 
-  storeSession({ ...payload.session, user: payload.user });
+  await storeSession({ ...payload.session, user: payload.user });
   return { ok: true };
 }
 
-async function loadOptions() {
-  const { response, payload } = await apiFetch("/imports/options");
-  if (!response.ok) {
-    throw new Error(payload?.erro || "Falha ao consultar instituicoes e contas.");
-  }
+async function fetchOverview() {
+  const { response, payload } = await apiFetch("/portal/overview");
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar o dashboard.");
+  state.overview = payload;
+  state.profile = {
+    user: payload.user,
+    settings: payload.settings,
+    version: "1.0.0",
+  };
+}
 
+async function fetchProfile() {
+  const { response, payload } = await apiFetch("/portal/profile");
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar o perfil.");
+  state.profile = payload;
+}
+
+async function fetchImportOptions() {
+  const { response, payload } = await apiFetch("/imports/options");
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar instituicoes e contas.");
   state.options = {
     institutions: payload.institutions ?? [],
     accounts: payload.accounts ?? [],
   };
-  renderOptions();
 }
 
-async function loadView(viewName, limit = 200) {
-  const { response, payload } = await apiFetch(`/gastos/${viewName}?limit=${limit}`);
-  if (!response.ok) {
-    throw new Error(payload?.erro || `Falha ao consultar ${viewName}.`);
+async function fetchHistory() {
+  const { response, payload } = await apiFetch("/imports?limit=100");
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar o historico.");
+  state.history = payload.imports ?? [];
+}
+
+async function fetchCatalog(entityName, page = null) {
+  const entityState = state.catalogs[entityName];
+  if (page) {
+    entityState.pagination.page = page;
   }
-  state.datasets[viewName] = payload.dados ?? [];
-}
 
-async function loadImportsHistory() {
-  const { response, payload } = await apiFetch("/imports?limit=20");
-  if (!response.ok) {
-    throw new Error(payload?.erro || "Falha ao consultar historico de importacoes.");
+  const query = new URLSearchParams({
+    page: String(entityState.pagination.page || 1),
+    pageSize: String(CATALOG_PAGE_SIZE),
+  });
+
+  if (entityState.search) {
+    query.set("search", entityState.search);
   }
-  state.datasets.imports = payload.imports ?? [];
-  renderImportHistory();
+
+  const { response, payload } = await apiFetch(`/portal/catalog/${entityName}?${query.toString()}`);
+  if (!response.ok) throw new Error(payload?.erro || `Falha ao carregar ${entityName}.`);
+  entityState.items = payload.items ?? [];
+  entityState.pagination = payload.pagination ?? { page: 1, total_pages: 1, total: entityState.items.length };
 }
 
-async function loadGmailStatus() {
-  if (!GMAIL_FEATURE_ENABLED) {
-    state.gmail = {
-      integration: null,
-      accounts: [],
-      institutions: [],
-      messages: [],
-    };
+function renderStats() {
+  const metrics = state.overview?.metrics;
+  if (!metrics) {
+    renderEmpty(elements.statsGrid, "Nenhum indicador disponivel", "Assim que houver transacoes e cadastros, o dashboard mostrara os principais numeros aqui.");
     return;
   }
 
-  const { response, payload } = await apiFetch("/integrations/gmail/status");
-  if (!response.ok) {
-    throw new Error(payload?.erro || "Falha ao consultar o status do Gmail.");
+  elements.statsGrid.replaceChildren(...[
+    ["Saldo total", formatCurrency(metrics.total_balance), "Disponivel nas transacoes consolidadas"],
+    ["Receitas", formatCurrency(metrics.total_income), "Entradas confirmadas"],
+    ["Despesas", formatCurrency(metrics.total_expense), "Saidas confirmadas"],
+    ["Transferencias", formatCurrency(metrics.total_transfers), "Movimentos internos"],
+    ["Contas e cartoes", `${metrics.accounts_count} / ${metrics.cards_count}`, "Cadastros ativos"],
+    ["Transacoes", String(metrics.transactions_count), `${metrics.categories_count} categorias registradas`],
+  ].map(([label, value, support]) => {
+    const card = createNode("article", "stat-card");
+    card.appendChild(createNode("p", "eyebrow", label));
+    card.appendChild(createNode("strong", "stat-value", value));
+    card.appendChild(createNode("span", "stat-trend", support));
+    return card;
+  }));
+
+  elements.dashboardGreeting.textContent = state.overview?.user?.display_name
+    ? `Bom trabalho, ${state.overview.user.display_name}.`
+    : "Seu panorama financeiro em um unico lugar";
+  elements.lastImportBadge.className = "status-badge neutral";
+  elements.lastImportBadge.textContent = `Ultima importacao: ${formatDateTime(metrics.latest_import_at)}`;
+}
+
+function renderBarSeries(target, rows, valueKeys, formatter) {
+  target.replaceChildren();
+  if (!rows.length) {
+    renderEmpty(target, "Nenhum dado encontrado", "Os graficos aparecerao aqui quando houver movimentacao suficiente.");
+    return;
   }
 
-  state.gmail = {
-    integration: payload.integration,
-    accounts: payload.accounts ?? [],
-    institutions: payload.institutions ?? [],
-    messages: payload.messages ?? [],
-  };
-  renderGmailStatus();
-  renderGmailMessages();
+  const maxValue = Math.max(1, ...rows.flatMap((row) => valueKeys.map((key) => Number(row[key] ?? row.total ?? 0))));
+  rows.forEach((row) => {
+    const card = createNode("div", "chart-bar");
+    if (valueKeys.length === 1) {
+      const value = Number(row[valueKeys[0]] ?? row.total ?? 0);
+      const head = createNode("div", "chart-bar-head");
+      head.append(createNode("strong", "", row.name || row.month || "-"), createNode("span", "", formatter(value, row)));
+      const track = createNode("div", "chart-track");
+      const fill = createNode("div", "chart-fill");
+      fill.style.width = `${Math.min(100, (value / maxValue) * 100)}%`;
+      track.appendChild(fill);
+      card.append(head, track);
+    } else {
+      const head = createNode("div", "chart-bar-head");
+      head.append(createNode("strong", "", row.month || "-"), createNode("span", "", `${formatCurrency(row.income)} / ${formatCurrency(row.expense)}`));
+      const incomeTrack = createNode("div", "chart-track");
+      const incomeFill = createNode("div", "chart-fill");
+      incomeFill.style.width = `${Math.min(100, (Number(row.income ?? 0) / maxValue) * 100)}%`;
+      incomeTrack.appendChild(incomeFill);
+      const expenseTrack = createNode("div", "chart-track");
+      const expenseFill = createNode("div", "chart-fill expense");
+      expenseFill.style.width = `${Math.min(100, (Number(row.expense ?? 0) / maxValue) * 100)}%`;
+      expenseTrack.appendChild(expenseFill);
+      card.append(head, incomeTrack, expenseTrack);
+    }
+    target.appendChild(card);
+  });
 }
 
-async function loadOverviewData() {
-  await Promise.all([loadView("base"), loadView("banco", 50), loadImportsHistory(), loadOptions()]);
+function renderDashboard() {
   renderStats();
-  renderLatestTransactions();
-  renderBankSummary();
-  renderTransactions();
+  renderBarSeries(elements.monthlyTrend, state.overview?.monthly_trend ?? [], ["income", "expense"], () => "");
+  renderBarSeries(elements.categorySummary, state.overview?.category_summary ?? [], ["total"], (value) => formatCurrency(value));
+
+  renderSimpleTransactions(elements.latestTransactions, state.overview?.latest_transactions ?? [], "Nenhuma transacao encontrada ainda.");
+  renderRecentImports(elements.recentImports, state.overview?.import_summary ?? []);
+  renderBankSummary(elements.bankSummary, state.overview?.bank_summary ?? []);
 }
 
-async function loadSectionData(sectionName) {
-  if (sectionName === "overview" || sectionName === "transactions") {
-    await loadOverviewData();
+function renderSimpleTransactions(target, rows, emptyMessage) {
+  target.replaceChildren();
+  if (!rows.length) {
+    renderEmpty(target, "Sem movimentacoes", emptyMessage);
+    return;
+  }
+
+  rows.forEach((row) => {
+    const card = createNode("article", "row-card");
+    const head = createNode("div", "chart-bar-head");
+    head.append(createNode("strong", "", row.descricao || row.descricao_normalizada || "-"), createNode("span", "", formatCurrency(row.valor)));
+    card.appendChild(head);
+    card.appendChild(createNode("span", "mini-copy", `${formatDate(row.data)} • ${row.banco || "Sem banco"} • ${row.categoria || "Sem categoria"}`));
+    target.appendChild(card);
+  });
+}
+
+function renderRecentImports(target, rows) {
+  target.replaceChildren();
+  if (!rows.length) {
+    renderEmpty(target, "Nenhuma importacao recente", "Assim que voce confirmar uma importacao, ela aparecera resumida aqui.");
+    return;
+  }
+
+  rows.forEach((row) => {
+    const card = createNode("article", "row-card");
+    card.appendChild(createNode("strong", "", `Status ${row.status_code}`));
+    card.appendChild(createNode("span", "mini-copy", `${row.accepted_rows ?? 0} aceitos • ${row.duplicate_rows ?? 0} duplicados • ${row.total_rows ?? 0} linhas`));
+    card.appendChild(createNode("span", "mini-copy", `Finalizada em ${formatDateTime(row.finished_at || row.started_at)}`));
+    target.appendChild(card);
+  });
+}
+
+function renderBankSummary(target, rows) {
+  target.replaceChildren();
+  if (!rows.length) {
+    renderEmpty(target, "Sem resumo bancario", "As despesas por banco serao consolidadas conforme as transacoes forem confirmadas.");
+    return;
+  }
+  rows.forEach((row) => {
+    const card = createNode("article", "row-card");
+    const head = createNode("div", "chart-bar-head");
+    head.append(createNode("strong", "", row.banco || "Sem banco"), createNode("span", "", formatCurrency(row.total_gasto)));
+    card.append(head, createNode("span", "mini-copy", `${row.quantidade_transacoes} transacoes • ${formatDate(row.periodo_inicial)} a ${formatDate(row.periodo_final)}`));
+    target.appendChild(card);
+  });
+}
+
+function renderImportOptions() {
+  const institutionPlaceholder = createNode("option", "", "Selecione a instituicao");
+  institutionPlaceholder.value = "";
+  elements.institutionSelect.replaceChildren(institutionPlaceholder);
+  state.options.institutions.forEach((institution) => {
+    const option = createNode("option", "", institution.name);
+    option.value = institution.id;
+    elements.institutionSelect.appendChild(option);
+  });
+
+  const accountPlaceholder = createNode("option", "", state.options.accounts.length ? "Selecione a conta" : "Nenhuma conta disponivel");
+  accountPlaceholder.value = "";
+  elements.accountSelect.replaceChildren(accountPlaceholder);
+  state.options.accounts.forEach((account) => {
+    const option = createNode("option", "", `${account.name} (${account.account_type})`);
+    option.value = account.id;
+    option.dataset.institutionId = account.financial_institution_id ?? "";
+    elements.accountSelect.appendChild(option);
+  });
+}
+
+function renderSelectedFile() {
+  elements.selectedFileCard.replaceChildren();
+  if (!state.selectedFile) {
+    elements.selectedFileCard.classList.add("hidden");
+    return;
+  }
+  elements.selectedFileCard.classList.remove("hidden");
+  elements.selectedFileCard.append(
+    createNode("strong", "", state.selectedFile.name),
+    createNode("span", "mini-copy", `${(state.selectedFile.size / 1024).toFixed(1)} KB • ${new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(new Date())}`),
+  );
+}
+
+function renderPreview() {
+  elements.previewPanel.replaceChildren();
+  elements.confirmImportButton.disabled = !state.preview?.import_id || state.preview?.status === "failed";
+
+  if (!state.preview) {
+    renderEmpty(elements.previewPanel, "Nenhum preview gerado", "Envie um OFX para visualizar valores, duplicidades e o resumo financeiro antes da confirmacao.");
+    return;
+  }
+
+  const preview = state.preview;
+  const summary = createNode("div", "summary-card");
+  const head = createNode("div", "section-head compact");
+  const headLeft = createNode("div");
+  headLeft.append(createNode("p", "eyebrow", "Arquivo analisado"), createNode("h4", "", preview.file.name));
+  const headRight = createNode("div", "toolbar-inline");
+  headRight.innerHTML = badge(preview.status, preview.status === "failed" ? "danger" : "success")
+    + badge(preview.institution.detected_label || "Instituicao pendente", preview.institution.detected_label ? "info" : "warning");
+  head.append(headLeft, headRight);
+  summary.appendChild(head);
+
+  const metrics = createNode("div", "stats-grid");
+  [
+    ["Conta", preview.financial_account.name],
+    ["Periodo", `${formatDate(preview.period.start_date)} a ${formatDate(preview.period.end_date)}`],
+    ["Saldo", formatCurrency(preview.ledger_balance)],
+    ["Validas", String(preview.totals.valid_rows)],
+    ["Duplicadas", String(preview.totals.duplicate_rows)],
+    ["Despesas", formatCurrency(preview.totals.total_expense)],
+  ].forEach(([label, value]) => {
+    const card = createNode("div", "stat-card");
+    card.append(createNode("p", "eyebrow", label), createNode("strong", "stat-value", value));
+    metrics.appendChild(card);
+  });
+  summary.appendChild(metrics);
+  elements.previewPanel.appendChild(summary);
+
+  if (preview.warnings?.length) {
+    const warnings = createNode("div", "detail-card");
+    warnings.appendChild(createNode("strong", "", "Avisos"));
+    preview.warnings.forEach((warning) => warnings.appendChild(createNode("span", "mini-copy", warning)));
+    elements.previewPanel.appendChild(warnings);
+  }
+
+  const rowsRegion = createNode("div", "table-wrap");
+  const rows = preview.preview_rows ?? [];
+  if (!rows.length) {
+    renderEmpty(elements.previewPanel, "Preview vazio", "Nenhuma linha foi retornada pelo parser OFX.");
+    return;
+  }
+
+  rowsRegion.innerHTML = tableHtml([
+    { key: "row_number", label: "#" },
+    { key: "occurred_on", label: "Data", formatter: formatDate },
+    { key: "description", label: "Descricao" },
+    { key: "amount", label: "Valor", formatter: formatCurrency },
+    { key: "status", label: "Status", formatter: (value) => badge(value, value === "accepted" ? "success" : value === "duplicate" ? "warning" : "danger") },
+    { key: "duplicate_reason", label: "Motivo", formatter: (value) => value || "-" },
+  ], rows);
+  elements.previewPanel.appendChild(rowsRegion);
+}
+
+function getFilteredHistory() {
+  const search = normalizeText(elements.historySearch.value);
+  const status = elements.historyStatusFilter.value;
+  return state.history.filter((item) => {
+    const haystack = normalizeText([
+      item.file?.name,
+      item.financial_account?.name,
+      item.institution?.name,
+      item.status,
+    ].join(" "));
+    const searchMatch = !search || haystack.includes(search);
+    const statusMatch = !status || item.status === status;
+    return searchMatch && statusMatch;
+  });
+}
+
+function renderHistory() {
+  const rows = getFilteredHistory();
+  const totalPages = Math.max(1, Math.ceil(rows.length / HISTORY_PAGE_SIZE));
+  state.historyPage = Math.min(totalPages, Math.max(1, state.historyPage));
+  const from = (state.historyPage - 1) * HISTORY_PAGE_SIZE;
+  const pageRows = rows.slice(from, from + HISTORY_PAGE_SIZE);
+
+  if (!pageRows.length) {
+    renderEmpty(elements.historyTable, "Nenhuma importacao encontrada", "Ajuste os filtros ou realize uma nova importacao para preencher esta central.");
+  } else {
+    elements.historyTable.innerHTML = tableHtml([
+      { key: "file", label: "Arquivo", formatter: (_, row) => row.file?.name || "-" },
+      { key: "institution", label: "Banco", formatter: (_, row) => row.institution?.name || "-" },
+      { key: "financial_account", label: "Conta", formatter: (_, row) => row.financial_account?.name || "-" },
+      { key: "started_at", label: "Inicio", formatter: formatDateTime },
+      { key: "status", label: "Status", formatter: (value) => badge(value, historyTone(value)) },
+      { key: "duration", label: "Tempo", formatter: (_, row) => formatDuration(row.started_at, row.finished_at) },
+      {
+        key: "actions",
+        label: "Acoes",
+        formatter: (_, row) => [
+          `<button type="button" class="btn btn-ghost history-action" data-action="view" data-import-id="${row.id}">Visualizar</button>`,
+          row.status === "pending_confirmation"
+            ? `<button type="button" class="btn btn-ghost history-action" data-action="cancel" data-import-id="${row.id}">Cancelar</button>`
+            : "",
+        ].join(" "),
+      },
+    ], pageRows);
+  }
+
+  elements.historyPaginationLabel.textContent = `Pagina ${state.historyPage} de ${totalPages}`;
+  elements.historyPrevPage.disabled = state.historyPage <= 1;
+  elements.historyNextPage.disabled = state.historyPage >= totalPages;
+}
+
+function historyTone(status) {
+  if (status === "completed") return "success";
+  if (status === "completed_with_errors" || status === "pending_confirmation") return "warning";
+  if (status === "failed") return "danger";
+  return "neutral";
+}
+
+async function loadHistoryDetails(importId) {
+  const { response, payload } = await apiFetch(`/imports/${importId}`);
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar detalhes da importacao.");
+  state.selectedImportDetails = payload.importacao;
+  renderHistoryDetails();
+}
+
+function renderHistoryDetails() {
+  elements.historyDetails.replaceChildren();
+  const details = state.selectedImportDetails;
+  if (!details) {
+    renderEmpty(elements.historyDetails, "Nenhuma importacao selecionada", "Use o botao visualizar para abrir o resumo detalhado neste painel.");
+    return;
+  }
+
+  const summary = createNode("div", "summary-card");
+  summary.append(
+    createNode("strong", "", details.files?.[0]?.name || "Importacao"),
+    createNode("span", "mini-copy", `${details.financial_account?.name || "Sem conta"} • ${details.institution?.name || "Sem banco"}`),
+    createNode("span", "mini-copy", `Periodo ${formatDate(details.processing_summary?.period?.start_date)} a ${formatDate(details.processing_summary?.period?.end_date)}`),
+  );
+  elements.historyDetails.appendChild(summary);
+
+  const meta = createNode("div", "stats-grid");
+  [
+    ["Aceitos", String(details.totals.accepted_rows)],
+    ["Rejeitados", String(details.totals.rejected_rows)],
+    ["Duplicados", String(details.totals.duplicate_rows)],
+    ["Processados", String(details.totals.processed_rows)],
+    ["Saldo OFX", formatCurrency(details.processing_summary?.ledger_balance)],
+    ["Status", details.status],
+  ].forEach(([label, value]) => {
+    const card = createNode("div", "stat-card");
+    card.append(createNode("p", "eyebrow", label), createNode("strong", "stat-value", value));
+    meta.appendChild(card);
+  });
+  elements.historyDetails.appendChild(meta);
+
+  const rowsWrap = createNode("div", "table-wrap");
+  rowsWrap.innerHTML = tableHtml([
+    { key: "row_number", label: "#" },
+    { key: "occurred_on", label: "Data", formatter: formatDate },
+    { key: "description", label: "Descricao" },
+    { key: "amount", label: "Valor", formatter: formatCurrency },
+    { key: "status", label: "Status", formatter: (value) => badge(value, value === "accepted" ? "success" : value === "duplicate" ? "warning" : "neutral") },
+    { key: "linked_transaction_id", label: "Vinculo", formatter: (value) => value ? "Criada" : "-" },
+  ], details.rows ?? []);
+  elements.historyDetails.appendChild(rowsWrap);
+}
+
+function tableHtml(columns, rows) {
+  const headers = columns.map((column) => `<th>${escapeHtml(column.label)}</th>`).join("");
+  const body = rows.map((row) => {
+    const cells = columns.map((column) => {
+      const raw = typeof column.formatter === "function"
+        ? column.formatter(row[column.key], row)
+        : row[column.key] ?? "-";
+      const content = typeof raw === "string" && raw.includes("<span")
+        ? raw
+        : typeof raw === "string" && raw.includes("<button")
+          ? raw
+          : escapeHtml(raw);
+      return `<td>${content}</td>`;
+    }).join("");
+    return `<tr>${cells}</tr>`;
+  }).join("");
+  return `<table><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function renderCatalog(entityName) {
+  const config = ENTITY_CONFIG[entityName];
+  const entityState = state.catalogs[entityName];
+  const target = document.getElementById(config.tableId);
+  const paginationLabel = config.paginationId ? document.getElementById(config.paginationId) : null;
+
+  if (!entityState.items.length) {
+    renderEmpty(target, `Nenhum ${config.title.toLowerCase()} encontrado`, "Use o botao de novo cadastro para criar o primeiro registro desta area.");
+  } else {
+    const rows = entityState.items.map((item) => ({
+      ...item,
+      actions: [
+        `<button type="button" class="btn btn-ghost catalog-action" data-action="edit" data-entity="${entityName}" data-id="${item.id}">Editar</button>`,
+        item.user_id === null && entityName === "categories"
+          ? ""
+          : `<button type="button" class="btn btn-ghost catalog-action" data-action="archive" data-entity="${entityName}" data-id="${item.id}">Arquivar</button>`,
+      ].join(" "),
+    }));
+    target.innerHTML = tableHtml([...config.columns, { key: "actions", label: "Acoes" }], rows);
+  }
+
+  if (paginationLabel) {
+    paginationLabel.textContent = `Pagina ${entityState.pagination.page} de ${entityState.pagination.total_pages}`;
+  }
+}
+
+function openDrawer(entityName, item = null) {
+  const config = ENTITY_CONFIG[entityName];
+  state.drawer = { entity: entityName, item };
+  elements.drawerTitle.textContent = item ? `Editar ${config.title}` : `Nova ${config.title}`;
+  elements.drawerEyebrow.textContent = entityName === "institutions" ? "Cadastro global" : "Cadastro";
+  elements.drawer.classList.remove("hidden");
+  elements.drawer.setAttribute("aria-hidden", "false");
+  elements.entityForm.replaceChildren();
+  setMessage(elements.drawerMessage, "");
+
+  config.fields.forEach((field) => {
+    const label = createNode("label", "", field.label);
+    label.htmlFor = `drawer-${field.name}`;
+    let input;
+
+    if (field.type === "select") {
+      input = document.createElement("select");
+      input.appendChild(new Option("Selecione", ""));
+      field.options.forEach((optionValue) => input.appendChild(new Option(optionValue, optionValue)));
+    } else if (field.type === "textarea") {
+      input = document.createElement("textarea");
+    } else if (field.type === "checkbox") {
+      const wrapper = createNode("label", "switch-row");
+      input = document.createElement("input");
+      input.type = "checkbox";
+      input.id = `drawer-${field.name}`;
+      input.name = field.name;
+      input.checked = item ? Boolean(item[field.name]) : Boolean(field.name === "is_active");
+      wrapper.append(input, createNode("span", "", field.label));
+      elements.entityForm.appendChild(wrapper);
+      return;
+    } else if (field.type === "institution-select" || field.type === "account-select") {
+      input = document.createElement("select");
+      input.appendChild(new Option(field.type === "institution-select" ? "Sem instituicao" : "Sem conta pagadora", ""));
+      const source = field.type === "institution-select" ? state.options.institutions : state.options.accounts;
+      source.forEach((sourceItem) => input.appendChild(new Option(sourceItem.name, sourceItem.id)));
+    } else {
+      input = document.createElement("input");
+      input.type = field.type;
+    }
+
+    input.id = `drawer-${field.name}`;
+    input.name = field.name;
+    if (field.required) input.required = true;
+    if (field.placeholder) input.placeholder = field.placeholder;
+    if (item && item[field.name] != null) {
+      input.value = item[field.name];
+    } else if (!item && field.name === "is_active" && input.type !== "checkbox") {
+      input.value = "true";
+    } else if (!item && field.name === "movement_type") {
+      input.value = "expense";
+    }
+    if (!item && field.name === "country_code") input.value = "BR";
+    if (!item && field.name === "theme") input.value = DEFAULT_THEME;
+
+    elements.entityForm.append(label, input);
+  });
+
+  const submitButton = createNode("button", "btn btn-primary", item ? "Salvar alteracoes" : "Criar registro");
+  submitButton.type = "submit";
+  submitButton.id = "drawerSubmitButton";
+  elements.entityForm.appendChild(submitButton);
+}
+
+function closeDrawer() {
+  state.drawer = { entity: null, item: null };
+  elements.drawer.classList.add("hidden");
+  elements.drawer.setAttribute("aria-hidden", "true");
+}
+
+function collectFormData(form) {
+  const data = {};
+  Array.from(form.elements).forEach((element) => {
+    if (!element.name) return;
+    if (element.type === "checkbox") {
+      data[element.name] = element.checked;
+      return;
+    }
+    data[element.name] = element.value;
+  });
+  return data;
+}
+
+async function saveDrawerEntity(event) {
+  event.preventDefault();
+  const entityName = state.drawer.entity;
+  if (!entityName) return;
+  const payload = collectFormData(elements.entityForm);
+  const submitButton = document.getElementById("drawerSubmitButton");
+  setLoading(submitButton, true, "Salvando...");
+  setMessage(elements.drawerMessage, "");
+
+  try {
+    const isEditing = Boolean(state.drawer.item?.id);
+    const path = isEditing
+      ? `/portal/catalog/${entityName}/${state.drawer.item.id}`
+      : `/portal/catalog/${entityName}`;
+    const { response, payload: result } = await apiFetch(path, {
+      method: isEditing ? "PUT" : "POST",
+      body: payload,
+    });
+
+    if (!response.ok) {
+      setMessage(elements.drawerMessage, result?.erro || "Falha ao salvar o cadastro.", "error");
+      return;
+    }
+
+    await fetchCatalog(entityName, state.catalogs[entityName].pagination.page);
+    renderCatalog(entityName);
+    if (entityName === "accounts" || entityName === "institutions") {
+      await fetchImportOptions();
+      renderImportOptions();
+    }
+    closeDrawer();
+    showToast(`${ENTITY_CONFIG[entityName].title} salva com sucesso.`, "success");
+  } catch (error) {
+    setMessage(elements.drawerMessage, error.message || "Falha ao salvar o cadastro.", "error");
+  } finally {
+    setLoading(submitButton, false);
+  }
+}
+
+async function archiveCatalogItem(event) {
+  const button = event.target.closest(".catalog-action[data-action='archive']");
+  if (!button) return;
+  const { entity, id } = button.dataset;
+  setLoading(button, true, "Arquivando...");
+
+  try {
+    const { response, payload } = await apiFetch(`/portal/catalog/${entity}/${id}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      showToast(payload?.erro || "Falha ao arquivar o registro.", "error");
+      return;
+    }
+    await fetchCatalog(entity, state.catalogs[entity].pagination.page);
+    renderCatalog(entity);
+    if (entity === "accounts" || entity === "institutions") {
+      await fetchImportOptions();
+      renderImportOptions();
+    }
+    showToast("Registro arquivado com sucesso.", "success");
+  } finally {
+    setLoading(button, false);
+  }
+}
+
+function editCatalogItem(event) {
+  const button = event.target.closest(".catalog-action[data-action='edit']");
+  if (!button) return;
+  const { entity, id } = button.dataset;
+  const item = state.catalogs[entity].items.find((entry) => entry.id === id);
+  if (item) {
+    openDrawer(entity, item);
+  }
+}
+
+function syncSettingsForm() {
+  const settings = state.profile?.settings;
+  if (!settings) return;
+  elements.defaultCurrencyCode.value = settings.default_currency_code || "BRL";
+  elements.timeZone.value = settings.time_zone || "America/Sao_Paulo";
+  elements.themePreference.value = settings.dashboard_preferences?.theme || DEFAULT_THEME;
+  elements.compactCards.checked = Boolean(settings.dashboard_preferences?.compact_cards);
+  applyTheme(elements.themePreference.value);
+}
+
+function syncProfileForm() {
+  const user = state.profile?.user;
+  if (!user) return;
+  elements.profileDisplayName.value = user.display_name || "";
+  elements.profileEmail.value = user.email || "";
+  elements.profileVersion.value = state.profile?.version || "1.0.0";
+}
+
+function setSelectedFile(file) {
+  state.selectedFile = file;
+  renderSelectedFile();
+}
+
+function clearSelectedFile() {
+  state.selectedFile = null;
+  elements.ofxFileInput.value = "";
+  renderSelectedFile();
+}
+
+function handleFiles(files) {
+  const file = files?.[0];
+  if (!file) return;
+
+  if (!file.name.toLowerCase().endsWith(".ofx")) {
+    setMessage(elements.importMessage, "Selecione apenas arquivos OFX.", "error");
+    return;
+  }
+  if (file.size <= 0) {
+    setMessage(elements.importMessage, "O arquivo selecionado esta vazio.", "error");
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    setMessage(elements.importMessage, "O arquivo excede o limite de 5 MB.", "error");
+    return;
+  }
+
+  setMessage(elements.importMessage, "");
+  setSelectedFile(file);
+}
+
+async function handleCreateAccount(event) {
+  event.preventDefault();
+  setLoading(elements.createAccountButton, true, "Salvando...");
+  setMessage(elements.importMessage, "");
+
+  try {
+    const { response, payload } = await apiFetch("/imports/accounts", {
+      method: "POST",
+      body: {
+        name: elements.createAccountName.value.trim(),
+        financialInstitutionId: elements.institutionSelect.value,
+        accountType: elements.createAccountType.value,
+        externalIdentifier: elements.createExternalIdentifier.value.trim(),
+        maskedAccountNumber: elements.createMaskedAccountNumber.value.trim(),
+        maskedBranchNumber: elements.createMaskedBranchNumber.value.trim(),
+      },
+    });
+
+    if (!response.ok) {
+      setMessage(elements.importMessage, payload?.erro || "Nao foi possivel criar a conta.", "error");
+      return;
+    }
+
+    elements.createAccountForm.reset();
+    elements.createAccountForm.classList.add("hidden");
+    await fetchImportOptions();
+    renderImportOptions();
+    elements.accountSelect.value = payload.account.id;
+    showToast("Conta criada com sucesso.", "success");
+  } catch (error) {
+    setMessage(elements.importMessage, error.message || "Falha ao criar a conta.", "error");
+  } finally {
+    setLoading(elements.createAccountButton, false);
+  }
+}
+
+async function handlePreviewImport() {
+  setLoading(elements.previewButton, true, "Processando...");
+  setMessage(elements.importMessage, "");
+
+  try {
+    if (!state.selectedFile) {
+      setMessage(elements.importMessage, "Selecione um arquivo OFX antes de continuar.", "error");
+      return;
+    }
+    if (!elements.accountSelect.value) {
+      setMessage(elements.importMessage, "Selecione a conta financeira de destino.", "error");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", state.selectedFile);
+    formData.append("financialAccountId", elements.accountSelect.value);
+    if (elements.institutionSelect.value) {
+      formData.append("financialInstitutionId", elements.institutionSelect.value);
+    }
+
+    const { response, payload } = await apiFetch("/imports/ofx/preview", {
+      method: "POST",
+      body: formData,
+    });
+    if (!response.ok) {
+      setMessage(elements.importMessage, payload?.erro || "Falha ao gerar preview.", "error");
+      return;
+    }
+
+    state.preview = payload.preview;
+    renderPreview();
+    await fetchHistory();
+    renderHistory();
+    showToast("Preview gerado com sucesso.", "success");
+  } catch (error) {
+    setMessage(elements.importMessage, error.message || "Falha ao gerar preview.", "error");
+  } finally {
+    setLoading(elements.previewButton, false);
+  }
+}
+
+async function handleConfirmImport() {
+  if (!state.preview?.import_id) {
+    setMessage(elements.importMessage, "Nenhum preview pendente para confirmar.", "error");
+    return;
+  }
+
+  setLoading(elements.confirmImportButton, true, "Confirmando...");
+  setMessage(elements.importMessage, "");
+
+  try {
+    const { response, payload } = await apiFetch("/imports/ofx/confirm", {
+      method: "POST",
+      body: { importId: state.preview.import_id },
+    });
+    if (!response.ok) {
+      setMessage(elements.importMessage, payload?.erro || "Falha ao confirmar a importacao.", "error");
+      return;
+    }
+
+    state.preview = null;
+    clearSelectedFile();
+    renderPreview();
+    await refreshAllData();
+    showToast("Importacao confirmada com sucesso.", "success");
+  } catch (error) {
+    setMessage(elements.importMessage, error.message || "Falha ao confirmar a importacao.", "error");
+  } finally {
+    setLoading(elements.confirmImportButton, false);
+  }
+}
+
+async function handleHistoryAction(event) {
+  const button = event.target.closest(".history-action");
+  if (!button) return;
+  const { action, importId } = button.dataset;
+  setLoading(button, true, action === "cancel" ? "Cancelando..." : "Abrindo...");
+
+  try {
+    if (action === "view") {
+      await loadHistoryDetails(importId);
+      showToast("Detalhes carregados.", "info");
+      return;
+    }
+
+    if (action === "cancel") {
+      const { response, payload } = await apiFetch(`/imports/${importId}/cancel`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        showToast(payload?.erro || "Nao foi possivel cancelar a importacao.", "error");
+        return;
+      }
+      await refreshAllData();
+      showToast("Importacao cancelada com sucesso.", "success");
+    }
+  } catch (error) {
+    showToast(error.message || "Falha ao processar a acao da importacao.", "error");
+  } finally {
+    setLoading(button, false);
+  }
+}
+
+async function loadSection(sectionName) {
+  if (sectionName === "dashboard") {
+    await fetchOverview();
+    renderDashboard();
+    syncSettingsForm();
+    syncProfileForm();
     return;
   }
 
   if (sectionName === "imports") {
-    await Promise.all([loadOptions(), loadImportsHistory()]);
+    await fetchImportOptions();
+    renderImportOptions();
     return;
   }
 
-  if (sectionName === "gmail" && GMAIL_FEATURE_ENABLED) {
-    await Promise.all([loadOptions(), loadGmailStatus()]);
+  if (sectionName === "history") {
+    await fetchHistory();
+    renderHistory();
     return;
   }
 
-  const mapping = {
-    recurring: ["recorrentes", elements.recurringTable, "Nenhum dado recorrente encontrado."],
-    suppliers: ["fornecedores", elements.suppliersTable, "Nenhum fornecedor encontrado."],
-    duplicates: ["duplicadas", elements.duplicatesTable, "Nenhuma duplicidade encontrada."],
-  };
+  if (sectionName === "settings") {
+    await Promise.all([fetchProfile(), fetchCatalog("institutions", 1)]);
+    syncSettingsForm();
+    renderCatalog("institutions");
+    return;
+  }
 
-  const [viewName, target, emptyMessage] = mapping[sectionName];
-  await loadView(viewName, 200);
-  renderAnalyticSection(target, state.datasets[viewName], emptyMessage);
+  if (sectionName === "profile") {
+    await fetchProfile();
+    syncProfileForm();
+    syncSettingsForm();
+    return;
+  }
+
+  if (sectionName === "suppliers") {
+    await fetchCatalog("counterparties", state.catalogs.counterparties.pagination.page || 1);
+    renderCatalog("counterparties");
+    return;
+  }
+
+  await fetchCatalog(sectionName, state.catalogs[sectionName].pagination.page || 1);
+  renderCatalog(sectionName);
 }
 
 function setActiveSection(sectionName) {
   state.activeSection = sectionName;
-  Object.entries(elements.sections).forEach(([key, element]) => {
-    if (!element) return;
-    element.classList.toggle("hidden", key !== sectionName);
+  Object.entries(elements.sections).forEach(([key, section]) => {
+    section.classList.toggle("hidden", key !== sectionName);
   });
-  elements.navLinks.forEach((button) => button.classList.toggle("is-active", button.dataset.section === sectionName));
-  elements.mainNav.classList.remove("is-open");
+  elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.section === sectionName));
+  elements.pageTitle.textContent = SECTION_TITLES[sectionName];
+  elements.sidebar.classList.remove("is-open");
   elements.menuToggle.setAttribute("aria-expanded", "false");
 }
 
 async function refreshActiveSection() {
   try {
-    await loadSectionData(state.activeSection);
+    await loadSection(state.activeSection);
   } catch (error) {
-    setMessage(elements.dashboardMessage, error.message || "Falha ao carregar a secao.", "error");
+    setMessage(elements.globalMessage, error.message || "Falha ao carregar a secao.", "error");
+  }
+}
+
+async function refreshAllData() {
+  try {
+    await Promise.all([fetchOverview(), fetchImportOptions(), fetchHistory()]);
+    renderDashboard();
+    renderImportOptions();
+    renderHistory();
+    syncSettingsForm();
+    syncProfileForm();
+  } catch (error) {
+    setMessage(elements.globalMessage, error.message || "Falha ao atualizar os dados do portal.", "error");
   }
 }
 
 async function verifyStoredSession() {
-  if (state.recoveryContext) {
-    showResetPassword(state.recoveryContext);
-    return;
-  }
-
   if (!state.session) {
     showLogin();
     return;
@@ -833,48 +1427,27 @@ async function verifyStoredSession() {
     const { response } = await apiFetch("/auth/me");
     if (!response.ok) throw new Error("invalid_session");
     showAppShell();
-    setActiveSection("overview");
-    await refreshActiveSection();
+    setActiveSection("dashboard");
+    await refreshAllData();
   } catch {
-    clearSession();
-    showLogin();
-  }
-}
-
-async function prepareRecoveryMode(linkType, sessionOverride = null) {
-  const { data, error } = sessionOverride
-    ? { data: { session: sessionOverride }, error: null }
-    : await supabase.auth.getSession();
-
-  if (error || !data?.session?.access_token) {
-    clearRecoveryContext();
-    clearAuthRedirectFromUrl();
+    await clearSession();
     showLogin({
-      message: "O link de redefinicao e invalido ou expirou. Solicite um novo e-mail.",
-      messageType: "error",
+      message: "Sua sessao expirou. Entre novamente para continuar.",
+      messageType: "warning",
     });
-    return;
   }
-
-  storeRecoveryContext({
-    email: data.session.user?.email ?? "",
-    type: linkType === "invite" ? "invite" : "recovery",
-  });
-
-  clearMessages();
-  clearAuthRedirectFromUrl();
-  showResetPassword(state.recoveryContext);
 }
 
 async function handleLogin(event) {
   event.preventDefault();
-  clearMessages();
   setLoading(elements.loginButton, true, "Entrando...");
-  const email = elements.usuarioInput.value.trim();
+  setMessage(elements.loginMessage, "");
+
+  const email = elements.usuarioInput.value.trim().toLowerCase();
   const password = elements.senhaInput.value;
 
   if (!email || !password) {
-    setMessage(elements.loginMessage, "Email e senha sao obrigatorios.", "error");
+    setMessage(elements.loginMessage, "Preencha email e senha.", "error");
     setLoading(elements.loginButton, false);
     return;
   }
@@ -882,14 +1455,15 @@ async function handleLogin(event) {
   try {
     const result = await signInThroughBackend(email, password);
     if (!result.ok) {
-      setMessage(elements.loginMessage, result.payload?.erro || "Nao foi possivel autenticar.", "error");
+      setMessage(elements.loginMessage, result.payload?.erro || "Credenciais invalidas.", "error");
       return;
     }
 
     elements.loginForm.reset();
     showAppShell();
-    setActiveSection("overview");
-    await refreshActiveSection();
+    setActiveSection("dashboard");
+    await refreshAllData();
+    showToast("Sessao iniciada com sucesso.", "success");
   } catch {
     setMessage(elements.loginMessage, "Erro ao conectar com a API.", "error");
   } finally {
@@ -901,8 +1475,8 @@ async function handleForgotPassword(event) {
   event.preventDefault();
   setLoading(elements.forgotPasswordButton, true, "Enviando...");
   setMessage(elements.forgotPasswordMessage, "");
-  const email = elements.recoveryEmailInput.value.trim().toLowerCase();
 
+  const email = elements.recoveryEmailInput.value.trim().toLowerCase();
   if (!email) {
     setMessage(elements.forgotPasswordMessage, "Informe um e-mail valido.", "error");
     setLoading(elements.forgotPasswordButton, false);
@@ -916,7 +1490,7 @@ async function handleForgotPassword(event) {
     if (error && error.name === "AuthRetryableFetchError") throw error;
     setMessage(elements.forgotPasswordMessage, "Se o e-mail estiver cadastrado, voce recebera um link para redefinir a senha.", "success");
   } catch {
-    setMessage(elements.forgotPasswordMessage, "Nao foi possivel solicitar a recuperacao agora. Tente novamente em instantes.", "error");
+    setMessage(elements.forgotPasswordMessage, "Nao foi possivel solicitar a recuperacao agora.", "error");
   } finally {
     setLoading(elements.forgotPasswordButton, false);
   }
@@ -927,6 +1501,17 @@ function validateNewPassword(password, confirmation) {
   if (password.length < PASSWORD_MIN_LENGTH) return `A senha precisa ter no minimo ${PASSWORD_MIN_LENGTH} caracteres.`;
   if (password !== confirmation) return "As senhas informadas sao diferentes.";
   return null;
+}
+
+async function prepareRecoveryMode(type, session) {
+  if (!session) return;
+  const context = {
+    email: session.user?.email ?? "",
+    type,
+  };
+  storeRecoveryContext(context);
+  showResetPassword(context);
+  clearAuthRedirectFromUrl();
 }
 
 async function handleResetPassword(event) {
@@ -965,21 +1550,20 @@ async function handleResetPassword(event) {
       const signInResult = await signInThroughBackend(ownerEmail, newPassword);
       if (signInResult.ok) {
         showAppShell();
-        setActiveSection("overview");
-        setMessage(elements.dashboardMessage, "Senha atualizada com sucesso.", "success");
-        await refreshActiveSection();
+        setActiveSection("dashboard");
+        await refreshAllData();
+        setMessage(elements.globalMessage, "Senha atualizada com sucesso.", "success");
         return;
       }
     }
 
-    elements.senhaInput.value = "";
     showLogin({
       prefillEmail: ownerEmail,
-      message: "Senha atualizada com sucesso. Faca login com a nova senha.",
+      message: "Senha atualizada com sucesso. Entre com a nova senha.",
       messageType: "success",
     });
   } catch {
-    setMessage(elements.resetPasswordMessage, "Erro de rede ao redefinir a senha.", "error");
+    setMessage(elements.resetPasswordMessage, "Erro ao redefinir a senha.", "error");
   } finally {
     setLoading(elements.resetPasswordButton, false);
   }
@@ -991,358 +1575,175 @@ async function handleLogout() {
       await apiFetch("/auth/logout", { method: "POST", retryOnUnauthorized: false });
     }
   } catch {
-    // fallback local suficiente para frontend estático
+    // fallback local
   } finally {
-    clearSession();
+    await clearSession();
     state.preview = null;
     state.selectedFile = null;
-    state.gmail = { integration: null, accounts: [], institutions: [], messages: [] };
-    clearMessages();
+    state.history = [];
+    state.selectedImportDetails = null;
+    clearSelectedFile();
+    renderPreview();
+    renderHistoryDetails();
+    setMessage(elements.globalMessage, "");
     showLogin();
+    showToast("Sessao encerrada.", "info");
   }
 }
 
-async function handleGmailConnect() {
-  setLoading(elements.gmailConnectButton, true, "Conectando...");
-  setMessage(elements.gmailMessage, "");
-
-  try {
-    const { response, payload } = await apiFetch("/integrations/gmail/connect");
-    if (!response.ok || !payload?.authorization_url) {
-      setMessage(elements.gmailMessage, payload?.erro || "Nao foi possivel iniciar a conexao Gmail.", "error");
-      return;
-    }
-
-    window.location.href = payload.authorization_url;
-  } catch (error) {
-    setMessage(elements.gmailMessage, error.message || "Falha ao iniciar a conexao Gmail.", "error");
-  } finally {
-    setLoading(elements.gmailConnectButton, false);
-  }
-}
-
-async function handleGmailDisconnect() {
-  setLoading(elements.gmailDisconnectButton, true, "Desconectando...");
-  setMessage(elements.gmailMessage, "");
-
-  try {
-    const { response, payload } = await apiFetch("/integrations/gmail/disconnect", { method: "POST" });
-    if (!response.ok) {
-      setMessage(elements.gmailMessage, payload?.erro || "Nao foi possivel desconectar o Gmail.", "error");
-      return;
-    }
-
-    await loadGmailStatus();
-    setMessage(elements.gmailMessage, "Integracao Gmail desconectada.", "success");
-  } catch (error) {
-    setMessage(elements.gmailMessage, error.message || "Falha ao desconectar o Gmail.", "error");
-  } finally {
-    setLoading(elements.gmailDisconnectButton, false);
-  }
-}
-
-async function handleGmailSync() {
-  setLoading(elements.gmailSyncButton, true, "Buscando...");
-  setMessage(elements.gmailMessage, "");
-
-  try {
-    const accountMappings = {
-      nubank: elements.gmailNubankAccount.value,
-      inter: elements.gmailInterAccount.value,
-    };
-    const { response, payload } = await apiFetch("/integrations/gmail/sync", {
-      method: "POST",
-      body: { accountMappings },
-    });
-
-    if (!response.ok) {
-      setMessage(elements.gmailMessage, payload?.erro || "Nao foi possivel sincronizar o Gmail.", "error");
-      return;
-    }
-
-    await Promise.all([loadGmailStatus(), loadImportsHistory()]);
-    setMessage(elements.gmailMessage, "Busca Gmail concluida com sucesso.", "success");
-  } catch (error) {
-    setMessage(elements.gmailMessage, error.message || "Falha ao sincronizar o Gmail.", "error");
-  } finally {
-    setLoading(elements.gmailSyncButton, false);
-  }
-}
-
-async function handleCreateAccount(event) {
+async function handleSaveSettings(event) {
   event.preventDefault();
-  setLoading(elements.createAccountButton, true, "Salvando...");
-  setMessage(elements.importMessage, "");
+  setLoading(elements.saveSettingsButton, true, "Salvando...");
+  setMessage(elements.settingsMessage, "");
 
   try {
-    const institutionId = elements.institutionSelect.value;
-    const { response, payload } = await apiFetch("/imports/accounts", {
-      method: "POST",
+    const { response, payload } = await apiFetch("/portal/settings", {
+      method: "PUT",
       body: {
-        name: elements.createAccountName.value.trim(),
-        financialInstitutionId: institutionId,
-        accountType: elements.createAccountType.value,
-        externalIdentifier: elements.createExternalIdentifier.value.trim(),
-        maskedAccountNumber: elements.createMaskedAccountNumber.value.trim(),
-        maskedBranchNumber: elements.createMaskedBranchNumber.value.trim(),
+        defaultCurrencyCode: elements.defaultCurrencyCode.value.trim().toUpperCase(),
+        timeZone: elements.timeZone.value.trim(),
+        dashboardPreferences: {
+          ...(state.profile?.settings?.dashboard_preferences ?? {}),
+          theme: elements.themePreference.value,
+          compact_cards: elements.compactCards.checked,
+        },
+        importPreferences: state.profile?.settings?.import_preferences ?? {},
       },
     });
 
     if (!response.ok) {
-      setMessage(elements.importMessage, payload?.erro || "Nao foi possivel criar a conta financeira.", "error");
+      setMessage(elements.settingsMessage, payload?.erro || "Falha ao salvar configuracoes.", "error");
       return;
     }
 
-    elements.createAccountForm.reset();
-    elements.createAccountForm.classList.add("hidden");
-    await loadOptions();
-    elements.accountSelect.value = payload.account.id;
-    syncInstitutionWithAccount();
-    setMessage(elements.importMessage, "Conta financeira criada com sucesso.", "success");
+    state.profile.settings = payload.settings;
+    applyTheme(payload.settings.dashboard_preferences?.theme || DEFAULT_THEME);
+    setMessage(elements.settingsMessage, "Configuracoes salvas com sucesso.", "success");
+    showToast("Configuracoes atualizadas.", "success");
   } catch (error) {
-    setMessage(elements.importMessage, error.message || "Falha ao criar a conta financeira.", "error");
+    setMessage(elements.settingsMessage, error.message || "Falha ao salvar configuracoes.", "error");
   } finally {
-    setLoading(elements.createAccountButton, false);
+    setLoading(elements.saveSettingsButton, false);
   }
 }
 
-async function handlePreviewImport() {
-  setLoading(elements.previewButton, true, "Processando...");
-  setMessage(elements.importMessage, "");
+async function handleSaveProfile(event) {
+  event.preventDefault();
+  setLoading(elements.saveProfileButton, true, "Salvando...");
+  setMessage(elements.profileMessage, "");
 
   try {
-    if (!state.selectedFile) {
-      setMessage(elements.importMessage, "Selecione um arquivo OFX antes de continuar.", "error");
-      return;
-    }
-
-    if (!elements.accountSelect.value) {
-      setMessage(elements.importMessage, "Selecione a conta financeira de destino.", "error");
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append("file", state.selectedFile);
-    formData.append("financialAccountId", elements.accountSelect.value);
-    if (elements.institutionSelect.value) {
-      formData.append("financialInstitutionId", elements.institutionSelect.value);
-    }
-
-    const { response, payload } = await apiFetch("/imports/ofx/preview", {
-      method: "POST",
-      body: formData,
-      headers: {},
+    const { response, payload } = await apiFetch("/portal/profile", {
+      method: "PUT",
+      body: {
+        displayName: elements.profileDisplayName.value.trim(),
+      },
     });
-
     if (!response.ok) {
-      setMessage(elements.importMessage, payload?.erro || "Falha ao gerar preview do arquivo.", "error");
+      setMessage(elements.profileMessage, payload?.erro || "Falha ao salvar o perfil.", "error");
       return;
     }
 
-    state.preview = payload.preview;
-    renderPreview();
-    await loadImportsHistory();
-    setMessage(elements.importMessage, "Preview OFX gerado com sucesso.", "success");
-  } catch (error) {
-    setMessage(elements.importMessage, error.message || "Falha ao gerar preview do arquivo.", "error");
-  } finally {
-    setLoading(elements.previewButton, false);
-  }
-}
-
-async function handleConfirmImport() {
-  if (!state.preview?.import_id) {
-    setMessage(elements.importMessage, "Nenhum preview pendente para confirmar.", "error");
-    return;
-  }
-
-  setLoading(elements.confirmImportButton, true, "Confirmando...");
-  setMessage(elements.importMessage, "");
-
-  try {
-    const { response, payload } = await apiFetch("/imports/ofx/confirm", {
-      method: "POST",
-      body: { importId: state.preview.import_id },
-    });
-
-    if (!response.ok) {
-      setMessage(elements.importMessage, payload?.erro || "Falha ao confirmar importacao.", "error");
-      return;
+    state.profile.user = payload.user;
+    if (state.overview?.user) {
+      state.overview.user.display_name = payload.user.display_name;
     }
-
-    state.preview = null;
-    renderPreview();
-    await Promise.all([loadImportsHistory(), loadView("base"), loadView("banco", 50)]);
+    syncProfileForm();
     renderStats();
-    renderLatestTransactions();
-    renderBankSummary();
-    renderTransactions();
-    setMessage(elements.importMessage, "Importacao confirmada com sucesso.", "success");
+    setMessage(elements.profileMessage, "Perfil atualizado com sucesso.", "success");
+    showToast("Perfil atualizado.", "success");
   } catch (error) {
-    setMessage(elements.importMessage, error.message || "Falha ao confirmar importacao.", "error");
+    setMessage(elements.profileMessage, error.message || "Falha ao salvar o perfil.", "error");
   } finally {
-    setLoading(elements.confirmImportButton, false);
+    setLoading(elements.saveProfileButton, false);
   }
 }
 
-async function handleHistoryAction(event) {
-  const button = event.target.closest("button[data-action]");
-  if (!button) return;
-  const importId = button.dataset.importId;
-  const action = button.dataset.action;
-  setMessage(elements.importMessage, "");
+async function handleSavePassword(event) {
+  event.preventDefault();
+  setLoading(elements.savePasswordButton, true, "Atualizando...");
+  setMessage(elements.passwordMessage, "");
 
-  if (action === "cancel") {
-    setLoading(button, true, "Cancelando...");
-    try {
-      const { response, payload } = await apiFetch(`/imports/${importId}/cancel`, { method: "POST" });
-      if (!response.ok) {
-        setMessage(elements.importMessage, payload?.erro || "Nao foi possivel cancelar a importacao.", "error");
-        return;
-      }
-      await loadImportsHistory();
-      setMessage(elements.importMessage, "Importacao cancelada.", "success");
-    } catch (error) {
-      setMessage(elements.importMessage, error.message || "Falha ao cancelar importacao.", "error");
-    } finally {
-      setLoading(button, false);
-    }
+  const validationError = validateNewPassword(elements.profilePassword.value, elements.profilePasswordConfirm.value);
+  if (validationError) {
+    setMessage(elements.passwordMessage, validationError, "error");
+    setLoading(elements.savePasswordButton, false);
     return;
   }
 
-  setLoading(button, true, "Abrindo...");
   try {
-    const { response, payload } = await apiFetch(`/imports/${importId}`);
-    if (!response.ok) {
-      setMessage(elements.importMessage, payload?.erro || "Falha ao carregar detalhes da importacao.", "error");
+    await ensureSession();
+    await supabase.auth.setSession({
+      access_token: state.session.access_token,
+      refresh_token: state.session.refresh_token,
+    });
+    const { error } = await supabase.auth.updateUser({
+      password: elements.profilePassword.value,
+    });
+
+    if (error) {
+      setMessage(elements.passwordMessage, "Nao foi possivel atualizar a senha agora.", "error");
       return;
     }
 
-    const details = payload.importacao;
-    const rows = details.rows.map((row) => ({
-      row_number: row.row_number,
-      status: row.status,
-      occurred_on: row.occurred_on,
-      description: row.description,
-      amount: row.amount,
-      fit_id: row.fit_id,
-    }));
-    state.detailCache.set(importId, details);
-    state.preview = {
-      import_id: details.id,
-      status: details.status,
-      file: { name: details.files[0]?.name || "Detalhes da importacao", size_bytes: details.files[0]?.size_bytes || 0, mime_type: "application/ofx", extension: "ofx", hash_masked: details.files[0]?.hash_masked || "-", encoding: details.files[0]?.encoding || "-" },
-      institution: { detected_label: details.institution?.name || "Instituicao nao informada" },
-      financial_account: { name: details.financial_account?.name || "Conta nao informada", account_type: details.financial_account?.account_type || "-", masked_account_number: details.financial_account?.masked_account_number || "-" },
-      period: {
-        start_date: details.processing_summary?.period?.start_date || null,
-        end_date: details.processing_summary?.period?.end_date || null,
-      },
-      ledger_balance: details.processing_summary?.ledger_balance || null,
-      totals: {
-        total_rows: details.totals.total_rows,
-        valid_rows: details.totals.accepted_rows,
-        invalid_rows: details.totals.rejected_rows,
-        duplicate_rows: details.totals.duplicate_rows,
-        income_count: 0,
-        expense_count: 0,
-        total_income: 0,
-        total_expense: 0,
-      },
-      warnings: details.processing_summary?.warnings || [],
-      file_duplicates: [],
-      preview_rows: rows,
-      preview_rows_truncated: details.rows_truncated,
-    };
-    renderPreview();
-    setMessage(elements.importMessage, "Detalhes da importacao carregados no painel de preview.", "info");
+    elements.passwordForm.reset();
+    setMessage(elements.passwordMessage, "Senha atualizada com sucesso.", "success");
+    showToast("Senha atualizada com sucesso.", "success");
   } catch (error) {
-    setMessage(elements.importMessage, error.message || "Falha ao carregar detalhes da importacao.", "error");
+    setMessage(elements.passwordMessage, error.message || "Falha ao atualizar a senha.", "error");
   } finally {
-    setLoading(button, false);
+    setLoading(elements.savePasswordButton, false);
   }
-}
-
-function setSelectedFile(file) {
-  state.selectedFile = file;
-  renderSelectedFile();
-}
-
-function clearSelectedFile() {
-  state.selectedFile = null;
-  elements.ofxFileInput.value = "";
-  renderSelectedFile();
-}
-
-function handleFiles(files) {
-  const file = files?.[0];
-  if (!file) return;
-
-  if (!file.name.toLowerCase().endsWith(".ofx")) {
-    setMessage(elements.importMessage, "Selecione apenas arquivos com extensao .ofx.", "error");
-    return;
-  }
-
-  if (file.size <= 0) {
-    setMessage(elements.importMessage, "O arquivo selecionado esta vazio.", "error");
-    return;
-  }
-
-  if (file.size > 5 * 1024 * 1024) {
-    setMessage(elements.importMessage, "O arquivo excede o limite de 5 MB.", "error");
-    return;
-  }
-
-  setMessage(elements.importMessage, "");
-  setSelectedFile(file);
 }
 
 function registerEventHandlers() {
   elements.loginForm.addEventListener("submit", handleLogin);
-  elements.showForgotPasswordButton.addEventListener("click", () => {
-    clearMessages();
-    showForgotPassword();
-  });
+  elements.showForgotPasswordButton.addEventListener("click", showForgotPassword);
   elements.forgotPasswordForm.addEventListener("submit", handleForgotPassword);
-  elements.backToLoginFromForgotButton.addEventListener("click", () => {
-    clearMessages();
-    showLogin();
-  });
+  elements.backToLoginFromForgotButton.addEventListener("click", () => showLogin());
   elements.resetPasswordForm.addEventListener("submit", handleResetPassword);
   elements.backToLoginFromResetButton.addEventListener("click", async () => {
     clearRecoveryContext();
     await supabase.auth.signOut();
-    clearMessages();
     showLogin();
   });
-  elements.logoutButton.addEventListener("click", handleLogout);
+
   elements.menuToggle.addEventListener("click", () => {
-    const isOpen = elements.mainNav.classList.toggle("is-open");
+    const isOpen = elements.sidebar.classList.toggle("is-open");
     elements.menuToggle.setAttribute("aria-expanded", String(isOpen));
   });
-  elements.navLinks.forEach((button) => {
+
+  elements.navButtons.forEach((button) => {
     button.addEventListener("click", async () => {
-      clearMessages();
+      setMessage(elements.globalMessage, "");
       setActiveSection(button.dataset.section);
       await refreshActiveSection();
     });
   });
-  elements.refreshOptionsButton.addEventListener("click", async () => {
-    setLoading(elements.refreshOptionsButton, true, "Atualizando...");
+
+  elements.sidebarLogout.addEventListener("click", handleLogout);
+  elements.refreshAllButton.addEventListener("click", async () => {
+    setLoading(elements.refreshAllButton, true, "Atualizando...");
+    await refreshAllData();
+    setLoading(elements.refreshAllButton, false);
+    showToast("Dados atualizados.", "info");
+  });
+
+  elements.refreshImportOptions.addEventListener("click", async () => {
+    setLoading(elements.refreshImportOptions, true, "Atualizando...");
     try {
-      await loadOptions();
-      setMessage(elements.importMessage, "Instituicoes e contas atualizadas.", "success");
-    } catch (error) {
-      setMessage(elements.importMessage, error.message || "Falha ao atualizar instituicoes e contas.", "error");
+      await fetchImportOptions();
+      renderImportOptions();
+      showToast("Opcoes de importacao atualizadas.", "info");
     } finally {
-      setLoading(elements.refreshOptionsButton, false);
+      setLoading(elements.refreshImportOptions, false);
     }
   });
-  elements.toggleCreateAccountButton.addEventListener("click", () => {
+
+  elements.toggleAccountForm.addEventListener("click", () => {
     elements.createAccountForm.classList.toggle("hidden");
   });
   elements.createAccountForm.addEventListener("submit", handleCreateAccount);
-  elements.accountSelect.addEventListener("change", syncInstitutionWithAccount);
   elements.ofxFileInput.addEventListener("change", (event) => handleFiles(event.target.files));
   elements.dropzone.addEventListener("dragover", (event) => {
     event.preventDefault();
@@ -1363,42 +1764,89 @@ function registerEventHandlers() {
   elements.previewButton.addEventListener("click", handlePreviewImport);
   elements.clearFileButton.addEventListener("click", clearSelectedFile);
   elements.confirmImportButton.addEventListener("click", handleConfirmImport);
+
+  elements.historySearch.addEventListener("input", () => {
+    state.historyPage = 1;
+    renderHistory();
+  });
+  elements.historyStatusFilter.addEventListener("change", () => {
+    state.historyPage = 1;
+    renderHistory();
+  });
   elements.refreshHistoryButton.addEventListener("click", async () => {
     setLoading(elements.refreshHistoryButton, true, "Atualizando...");
     try {
-      await loadImportsHistory();
-      setMessage(elements.importMessage, "Historico atualizado.", "success");
-    } catch (error) {
-      setMessage(elements.importMessage, error.message || "Falha ao atualizar historico.", "error");
+      await fetchHistory();
+      renderHistory();
+      showToast("Historico atualizado.", "info");
     } finally {
       setLoading(elements.refreshHistoryButton, false);
     }
   });
-  elements.importsHistory.addEventListener("click", handleHistoryAction);
-  if (GMAIL_FEATURE_ENABLED && elements.gmailConnectButton && elements.gmailDisconnectButton && elements.gmailSyncButton && elements.gmailRefreshButton) {
-    elements.gmailConnectButton.addEventListener("click", handleGmailConnect);
-    elements.gmailDisconnectButton.addEventListener("click", handleGmailDisconnect);
-    elements.gmailSyncButton.addEventListener("click", handleGmailSync);
-    elements.gmailRefreshButton.addEventListener("click", async () => {
-      setLoading(elements.gmailRefreshButton, true, "Atualizando...");
-      try {
-        await Promise.all([loadOptions(), loadGmailStatus()]);
-        setMessage(elements.gmailMessage, "Status Gmail atualizado.", "success");
-      } catch (error) {
-        setMessage(elements.gmailMessage, error.message || "Falha ao atualizar o status Gmail.", "error");
-      } finally {
-        setLoading(elements.gmailRefreshButton, false);
-      }
+  elements.historyPrevPage.addEventListener("click", () => {
+    state.historyPage = Math.max(1, state.historyPage - 1);
+    renderHistory();
+  });
+  elements.historyNextPage.addEventListener("click", () => {
+    state.historyPage += 1;
+    renderHistory();
+  });
+  elements.historyTable.addEventListener("click", handleHistoryAction);
+
+  Object.entries(ENTITY_CONFIG).forEach(([entityName, config]) => {
+    if (config.searchId) {
+      const input = document.getElementById(config.searchId);
+      input?.addEventListener("input", async () => {
+        state.catalogs[entityName].search = input.value.trim();
+        state.catalogs[entityName].pagination.page = 1;
+        await fetchCatalog(entityName, 1);
+        renderCatalog(entityName);
+      });
+    }
+  });
+
+  document.querySelectorAll("[data-open-entity]").forEach((button) => {
+    button.addEventListener("click", () => openDrawer(button.dataset.openEntity));
+  });
+  document.querySelectorAll("[data-page-prev]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const entity = button.dataset.pagePrev;
+      const nextPage = Math.max(1, state.catalogs[entity].pagination.page - 1);
+      await fetchCatalog(entity, nextPage);
+      renderCatalog(entity);
     });
-  }
+  });
+  document.querySelectorAll("[data-page-next]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const entity = button.dataset.pageNext;
+      const nextPage = Math.min(state.catalogs[entity].pagination.total_pages, state.catalogs[entity].pagination.page + 1);
+      await fetchCatalog(entity, nextPage);
+      renderCatalog(entity);
+    });
+  });
+
+  elements.closeDrawer.addEventListener("click", closeDrawer);
+  elements.drawer.addEventListener("click", (event) => {
+    if (event.target.matches("[data-close-drawer]")) {
+      closeDrawer();
+    }
+  });
+  elements.entityForm.addEventListener("submit", saveDrawerEntity);
+
+  Object.values(ENTITY_CONFIG).forEach((config) => {
+    const table = document.getElementById(config.tableId);
+    table?.addEventListener("click", editCatalogItem);
+    table?.addEventListener("click", archiveCatalogItem);
+  });
+
+  elements.settingsForm.addEventListener("submit", handleSaveSettings);
+  elements.profileForm.addEventListener("submit", handleSaveProfile);
+  elements.passwordForm.addEventListener("submit", handleSavePassword);
+  elements.themePreference.addEventListener("change", () => applyTheme(elements.themePreference.value));
 }
 
 async function bootstrap() {
   registerEventHandlers();
-
-  if (GMAIL_FEATURE_ENABLED && initialGmailOauthStatus) {
-    history.replaceState(null, "", window.location.pathname);
-  }
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === "PASSWORD_RECOVERY") {
@@ -1431,12 +1879,6 @@ async function bootstrap() {
     }
     showResetPassword(state.recoveryContext);
     return;
-  }
-
-  if (GMAIL_FEATURE_ENABLED && initialGmailOauthStatus === "connected") {
-    setMessage(elements.dashboardMessage, "Gmail conectado com sucesso. Abra a aba Gmail para sincronizar anexos.", "success");
-  } else if (GMAIL_FEATURE_ENABLED && initialGmailOauthStatus === "error") {
-    setMessage(elements.dashboardMessage, "A conexao Gmail nao foi concluida.", "error");
   }
 
   await verifyStoredSession();

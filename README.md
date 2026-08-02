@@ -1,6 +1,6 @@
 # API Financas - Frontend
 
-Frontend estatico em HTML, CSS e JavaScript puro para login, restauracao de sessao, consulta das views financeiras e logout.
+Frontend estatico em HTML, CSS e JavaScript puro para login, restauracao de sessao, dashboard, central de importacoes, CRUDs e configuracoes do portal.
 
 ## Estado da F03-E02
 
@@ -62,3 +62,23 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - a aba Gmail foi ocultada do portal publicado para nao expor uma funcionalidade ainda nao ativada;
 - o portal passa a destacar o fluxo oficial atual: upload manual de OFX, preview, confirmacao e historico;
 - qualquer automacao por e-mail fica registrada apenas como capacidade futura, sem botoes quebrados e sem dependencia de Google OAuth nesta etapa.
+
+## Estado local da RC 1.0
+
+- o portal agora opera com menu lateral funcional para:
+  - Dashboard
+  - Importacoes
+  - Historico
+  - Categorias
+  - Contas
+  - Cartoes
+  - Fornecedores
+  - Configuracoes
+  - Perfil
+  - Sair
+- o dashboard passou a mostrar saldo total, receitas, despesas, transferencias, ultima importacao, quantidade de contas, cartoes, categorias e total de transacoes;
+- a central de importacoes ganhou busca, filtro por status, paginacao visual e painel lateral de detalhes;
+- os cadastros passaram a usar CRUD real sobre os endpoints `/portal/catalog/*`;
+- configuracoes e perfil deixaram de ser placeholders e passaram a persistir nome, tema e preferencias reais do usuario;
+- a troca de senha passou a poder ser iniciada de dentro do proprio portal, usando a sessao autenticada do Supabase no navegador;
+- a identidade visual foi refeita com layout premium, sidebar mobile, cards, graficos em CSS e toasts.
