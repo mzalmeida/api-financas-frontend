@@ -17,10 +17,12 @@ const HISTORY_PAGE_SIZE = 8;
 const SECTION_TITLES = {
   dashboard: "Dashboard",
   imports: "Importacoes",
-  history: "Historico",
+  movements: "Movimentacoes",
+  duplicates: "Duplicidades",
+  history: "Historico OFX",
+  installments: "Parcelamentos",
   categories: "Categorias",
-  accounts: "Contas",
-  cards: "Cartoes",
+  accounts: "Contas Financeiras",
   suppliers: "Fornecedores",
   settings: "Configuracoes",
   profile: "Perfil",
@@ -48,25 +50,25 @@ const ENTITY_CONFIG = {
     ],
   },
   accounts: {
-    title: "Conta",
+    title: "Conta financeira",
     tableId: "table-accounts",
     paginationId: "pagination-accounts",
     searchId: "search-accounts",
     fields: [
       { name: "name", label: "Nome", type: "text", required: true },
       { name: "financial_institution_id", label: "Instituicao", type: "institution-select" },
-      { name: "account_type", label: "Tipo", type: "select", options: ["checking", "payment", "savings", "investment", "cash", "other"], required: true },
-      { name: "external_identifier", label: "Identificador externo", type: "text" },
-      { name: "masked_account_number", label: "Conta mascarada", type: "text" },
-      { name: "masked_branch_number", label: "Agencia mascarada", type: "text" },
+      { name: "account_type", label: "Tipo", type: "select", options: ["checking", "savings", "wallet", "credit_card", "manual", "payment", "investment", "cash", "other"], required: true },
       { name: "opening_balance", label: "Saldo inicial", type: "number", placeholder: "0" },
       { name: "opening_balance_date", label: "Data do saldo inicial", type: "date" },
+      { name: "statement_closing_day", label: "Fechamento da fatura", type: "number", placeholder: "Dia 1-31" },
+      { name: "statement_due_day", label: "Vencimento da fatura", type: "number", placeholder: "Dia 1-31" },
+      { name: "credit_limit_amount", label: "Limite do cartao", type: "number", placeholder: "0" },
       { name: "is_active", label: "Ativa", type: "checkbox" },
     ],
     columns: [
-      { key: "name", label: "Conta" },
+      { key: "name", label: "Conta financeira" },
       { key: "account_type", label: "Tipo" },
-      { key: "masked_account_number", label: "Numero" },
+      { key: "statement_due_day", label: "Vencimento" },
       { key: "currency_code", label: "Moeda" },
       { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
     ],
@@ -191,7 +193,17 @@ const elements = {
   navButtons: Array.from(document.querySelectorAll(".nav-item[data-section]")),
   sidebarLogout: document.getElementById("sidebarLogout"),
   refreshAllButton: document.getElementById("refreshAllButton"),
+  filterCompetence: document.getElementById("filterCompetence"),
+  filterBank: document.getElementById("filterBank"),
+  filterAccount: document.getElementById("filterAccount"),
+  filterType: document.getElementById("filterType"),
+  filterCategory: document.getElementById("filterCategory"),
+  applyGlobalFilters: document.getElementById("applyGlobalFilters"),
+  clearGlobalFilters: document.getElementById("clearGlobalFilters"),
   statsGrid: document.getElementById("statsGrid"),
+  accountBalanceList: document.getElementById("accountBalanceList"),
+  cardBillSummary: document.getElementById("cardBillSummary"),
+  installmentSummary: document.getElementById("installmentSummary"),
   dashboardGreeting: document.getElementById("dashboardGreeting"),
   lastImportBadge: document.getElementById("lastImportBadge"),
   monthlyTrend: document.getElementById("monthlyTrend"),
@@ -206,9 +218,14 @@ const elements = {
   createAccountForm: document.getElementById("createAccountForm"),
   createAccountName: document.getElementById("createAccountName"),
   createAccountType: document.getElementById("createAccountType"),
+  createOpeningBalance: document.getElementById("createOpeningBalance"),
   createExternalIdentifier: document.getElementById("createExternalIdentifier"),
   createMaskedAccountNumber: document.getElementById("createMaskedAccountNumber"),
   createMaskedBranchNumber: document.getElementById("createMaskedBranchNumber"),
+  createStatementLabel: document.getElementById("createStatementLabel"),
+  createStatementClosingDay: document.getElementById("createStatementClosingDay"),
+  createStatementDueDay: document.getElementById("createStatementDueDay"),
+  createCreditLimitAmount: document.getElementById("createCreditLimitAmount"),
   createAccountButton: document.getElementById("createAccountButton"),
   importMessage: document.getElementById("importMsg"),
   dropzone: document.getElementById("dropzone"),
@@ -226,6 +243,28 @@ const elements = {
   historyPrevPage: document.getElementById("historyPrevPage"),
   historyNextPage: document.getElementById("historyNextPage"),
   historyPaginationLabel: document.getElementById("historyPaginationLabel"),
+  movementsSearch: document.getElementById("movementsSearch"),
+  refreshMovementsButton: document.getElementById("refreshMovementsButton"),
+  movementsTable: document.getElementById("movementsTable"),
+  movementsPrevPage: document.getElementById("movementsPrevPage"),
+  movementsNextPage: document.getElementById("movementsNextPage"),
+  movementsPaginationLabel: document.getElementById("movementsPaginationLabel"),
+  refreshDuplicatesButton: document.getElementById("refreshDuplicatesButton"),
+  duplicatesTable: document.getElementById("duplicatesTable"),
+  installmentForm: document.getElementById("installmentForm"),
+  installmentSupplier: document.getElementById("installmentSupplier"),
+  installmentDescription: document.getElementById("installmentDescription"),
+  installmentTotalAmount: document.getElementById("installmentTotalAmount"),
+  installmentCount: document.getElementById("installmentCount"),
+  installmentAmount: document.getElementById("installmentAmount"),
+  installmentFirstDueDate: document.getElementById("installmentFirstDueDate"),
+  installmentCategory: document.getElementById("installmentCategory"),
+  installmentFinancialAccount: document.getElementById("installmentFinancialAccount"),
+  installmentStatus: document.getElementById("installmentStatus"),
+  installmentNotes: document.getElementById("installmentNotes"),
+  saveInstallmentButton: document.getElementById("saveInstallmentButton"),
+  installmentMessage: document.getElementById("installmentMessage"),
+  installmentsTable: document.getElementById("installmentsTable"),
   settingsForm: document.getElementById("settingsForm"),
   defaultCurrencyCode: document.getElementById("defaultCurrencyCode"),
   timeZone: document.getElementById("timeZone"),
@@ -257,10 +296,12 @@ const elements = {
   sections: {
     dashboard: document.getElementById("section-dashboard"),
     imports: document.getElementById("section-imports"),
+    movements: document.getElementById("section-movements"),
+    duplicates: document.getElementById("section-duplicates"),
     history: document.getElementById("section-history"),
+    installments: document.getElementById("section-installments"),
     categories: document.getElementById("section-categories"),
     accounts: document.getElementById("section-accounts"),
-    cards: document.getElementById("section-cards"),
     suppliers: document.getElementById("section-suppliers"),
     settings: document.getElementById("section-settings"),
     profile: document.getElementById("section-profile"),
@@ -276,13 +317,25 @@ const state = {
   overview: null,
   profile: null,
   options: { institutions: [], accounts: [] },
+  globalFilters: {
+    competence: new Date().toISOString().slice(0, 7),
+    bank: "",
+    financialAccountId: "",
+    movementType: "",
+    category: "",
+    search: "",
+  },
   history: [],
   historyPage: 1,
+  movements: [],
+  movementsPage: 1,
+  movementsPagination: { page: 1, total_pages: 1, total: 0 },
+  duplicates: [],
+  installments: [],
   selectedImportDetails: null,
   catalogs: {
     categories: catalogState(),
     accounts: catalogState(),
-    cards: catalogState(),
     counterparties: catalogState(),
     institutions: catalogState(),
   },
@@ -524,6 +577,16 @@ function renderEmpty(target, title, description) {
   target.appendChild(box);
 }
 
+function buildGlobalQuery() {
+  const query = new URLSearchParams();
+  if (state.globalFilters.competence) query.set("competence", state.globalFilters.competence);
+  if (state.globalFilters.bank) query.set("bank", state.globalFilters.bank);
+  if (state.globalFilters.financialAccountId) query.set("financialAccountId", state.globalFilters.financialAccountId);
+  if (state.globalFilters.movementType) query.set("movementType", state.globalFilters.movementType);
+  if (state.globalFilters.category) query.set("category", state.globalFilters.category);
+  return query;
+}
+
 async function apiFetch(pathname, options = {}) {
   const {
     method = "GET",
@@ -607,12 +670,13 @@ async function signInThroughBackend(email, password) {
 }
 
 async function fetchOverview() {
-  const { response, payload } = await apiFetch("/portal/overview");
+  const query = buildGlobalQuery();
+  const { response, payload } = await apiFetch(`/portal/overview?${query.toString()}`);
   if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar o dashboard.");
   state.overview = payload;
   state.profile = {
     user: payload.user,
-    settings: payload.settings,
+    settings: state.profile?.settings ?? {},
     version: "1.0.0",
   };
 }
@@ -630,6 +694,33 @@ async function fetchImportOptions() {
     institutions: payload.institutions ?? [],
     accounts: payload.accounts ?? [],
   };
+}
+
+async function fetchMovements() {
+  const query = buildGlobalQuery();
+  query.set("page", String(state.movementsPage || 1));
+  query.set("pageSize", "12");
+  if (state.globalFilters.search) {
+    query.set("search", state.globalFilters.search);
+  }
+
+  const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar movimentacoes.");
+  state.movements = payload.items ?? [];
+  state.movementsPagination = payload.pagination ?? { page: 1, total_pages: 1, total: state.movements.length };
+}
+
+async function fetchDuplicates() {
+  const query = buildGlobalQuery();
+  const { response, payload } = await apiFetch(`/portal/duplicates?${query.toString()}`);
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar duplicidades.");
+  state.duplicates = payload.items ?? [];
+}
+
+async function fetchInstallments() {
+  const { response, payload } = await apiFetch("/portal/installments");
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar parcelamentos.");
+  state.installments = payload.items ?? [];
 }
 
 async function fetchHistory() {
@@ -667,12 +758,12 @@ function renderStats() {
   }
 
   elements.statsGrid.replaceChildren(...[
-    ["Saldo total", formatCurrency(metrics.total_balance), "Disponivel nas transacoes consolidadas"],
-    ["Receitas", formatCurrency(metrics.total_income), "Entradas confirmadas"],
-    ["Despesas", formatCurrency(metrics.total_expense), "Saidas confirmadas"],
-    ["Transferencias", formatCurrency(metrics.total_transfers), "Movimentos internos"],
-    ["Contas e cartoes", `${metrics.accounts_count} / ${metrics.cards_count}`, "Cadastros ativos"],
-    ["Transacoes", String(metrics.transactions_count), `${metrics.categories_count} categorias registradas`],
+    ["Saldo geral", formatCurrency(metrics.overall_balance), "Saldo disponivel nas contas financeiras"],
+    ["Receitas do mes", formatCurrency(metrics.monthly_income), "Entradas filtradas pela competencia ativa"],
+    ["Despesas do mes", formatCurrency(metrics.monthly_expense), "Saidas filtradas pela competencia ativa"],
+    ["Resultado do mes", formatCurrency(metrics.monthly_result), metrics.monthly_result >= 0 ? "Resultado positivo" : "Resultado em atencao"],
+    ["Duplicidades", String(metrics.duplicate_candidates ?? 0), "Lancamentos parecidos identificados"],
+    ["Ultima importacao", formatDateTime(metrics.latest_import_at), "Historico OFX mais recente"],
   ].map(([label, value, support]) => {
     const card = createNode("article", "stat-card");
     card.appendChild(createNode("p", "eyebrow", label));
@@ -685,7 +776,7 @@ function renderStats() {
     ? `Bom trabalho, ${state.overview.user.display_name}.`
     : "Seu panorama financeiro em um unico lugar";
   elements.lastImportBadge.className = "status-badge neutral";
-  elements.lastImportBadge.textContent = `Ultima importacao: ${formatDateTime(metrics.latest_import_at)}`;
+  elements.lastImportBadge.textContent = `Competencia ativa: ${state.globalFilters.competence || "--"}`;
 }
 
 function renderBarSeries(target, rows, valueKeys, formatter) {
@@ -725,13 +816,112 @@ function renderBarSeries(target, rows, valueKeys, formatter) {
 }
 
 function renderDashboard() {
+  renderGlobalFilterOptions();
   renderStats();
   renderBarSeries(elements.monthlyTrend, state.overview?.monthly_trend ?? [], ["income", "expense"], () => "");
   renderBarSeries(elements.categorySummary, state.overview?.category_summary ?? [], ["total"], (value) => formatCurrency(value));
-
+  renderAccountBalances();
+  renderCardBillSummary();
+  renderInstallmentSummary();
   renderSimpleTransactions(elements.latestTransactions, state.overview?.latest_transactions ?? [], "Nenhuma transacao encontrada ainda.");
   renderRecentImports(elements.recentImports, state.overview?.import_summary ?? []);
   renderBankSummary(elements.bankSummary, state.overview?.bank_summary ?? []);
+}
+
+function movementTone(value) {
+  if (value === "income") return "success";
+  if (value === "expense") return "danger";
+  if (value === "transfer") return "info";
+  return "neutral";
+}
+
+function renderGlobalFilterOptions() {
+  const options = state.overview?.filter_options ?? {};
+
+  if (elements.filterCompetence && !elements.filterCompetence.value) {
+    elements.filterCompetence.value = state.globalFilters.competence;
+  }
+
+  replaceSelectOptions(elements.filterBank, "Todos os bancos", options.banks ?? [], state.globalFilters.bank);
+  replaceSelectOptions(elements.filterCategory, "Todas as categorias", options.categories ?? [], state.globalFilters.category);
+
+  if (elements.filterAccount) {
+    const placeholder = createNode("option", "", "Todas as contas");
+    placeholder.value = "";
+    elements.filterAccount.replaceChildren(placeholder);
+    (options.accounts ?? []).forEach((account) => {
+      const option = createNode("option", "", `${account.name} (${account.account_type})`);
+      option.value = account.id;
+      option.selected = account.id === state.globalFilters.financialAccountId;
+      elements.filterAccount.appendChild(option);
+    });
+  }
+}
+
+function replaceSelectOptions(target, placeholderLabel, values, selectedValue = "") {
+  if (!target) return;
+  const placeholder = createNode("option", "", placeholderLabel);
+  placeholder.value = "";
+  target.replaceChildren(placeholder);
+  values.forEach((value) => {
+    const option = createNode("option", "", value);
+    option.value = value;
+    option.selected = value === selectedValue;
+    target.appendChild(option);
+  });
+}
+
+function renderAccountBalances() {
+  const rows = state.overview?.account_balances ?? [];
+  if (!rows.length) {
+    renderEmpty(elements.accountBalanceList, "Nenhuma conta encontrada", "Crie uma conta financeira para acompanhar o saldo consolidado.");
+    return;
+  }
+
+  elements.accountBalanceList.replaceChildren();
+  rows.forEach((row) => {
+    const card = createNode("article", "row-card");
+    const head = createNode("div", "chart-bar-head");
+    head.append(createNode("strong", "", row.name), createNode("span", "", formatCurrency(row.current_balance)));
+    card.append(head, createNode("span", "mini-copy", `${row.institution_name || "Sem instituicao"} • ${row.account_type}`));
+    elements.accountBalanceList.appendChild(card);
+  });
+}
+
+function renderCardBillSummary() {
+  const summary = state.overview?.card_summary;
+  if (!summary?.cards?.length) {
+    renderEmpty(elements.cardBillSummary, "Nenhuma fatura aberta", "Assim que contas do tipo cartao de credito receberem lancamentos, a leitura de fatura aparecera aqui.");
+    return;
+  }
+
+  elements.cardBillSummary.replaceChildren();
+  summary.cards.forEach((row) => {
+    const card = createNode("article", "row-card");
+    card.appendChild(createNode("strong", "", row.name));
+    card.appendChild(createNode("span", "mini-copy", `Fatura aberta ${formatCurrency(row.open_amount)} • Fechada ${formatCurrency(row.closed_amount)}`));
+    card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.next_due_date)} • Limite ${row.credit_limit_amount ? formatCurrency(row.credit_limit_amount) : "nao informado"}${row.utilized_limit_ratio != null ? ` • Uso ${row.utilized_limit_ratio}%` : ""}`));
+    elements.cardBillSummary.appendChild(card);
+  });
+}
+
+function renderInstallmentSummary() {
+  const summary = state.overview?.installment_summary;
+  if (!summary?.count) {
+    renderEmpty(elements.installmentSummary, "Nenhum parcelamento ativo", "Cadastre parcelamentos manuais para acompanhar proximas parcelas e valor restante.");
+    return;
+  }
+
+  const nextText = summary.next_installment
+    ? `${summary.next_installment.description || "Parcela"} em ${formatDate(summary.next_installment.due_date)}`
+    : "Sem proxima parcela definida";
+
+  elements.installmentSummary.replaceChildren();
+  const card = createNode("article", "row-card");
+  card.appendChild(createNode("strong", "", `${summary.count} parcelas em aberto`));
+  card.appendChild(createNode("span", "mini-copy", `Valor restante ${formatCurrency(summary.remaining_amount)}`));
+  card.appendChild(createNode("span", "mini-copy", nextText));
+  elements.installmentSummary.appendChild(card);
 }
 
 function renderSimpleTransactions(target, rows, emptyMessage) {
@@ -795,11 +985,120 @@ function renderImportOptions() {
   const accountPlaceholder = createNode("option", "", state.options.accounts.length ? "Selecione a conta" : "Nenhuma conta disponivel");
   accountPlaceholder.value = "";
   elements.accountSelect.replaceChildren(accountPlaceholder);
+  elements.installmentFinancialAccount?.replaceChildren(createNode("option", "", "Sem conta vinculada"));
   state.options.accounts.forEach((account) => {
     const option = createNode("option", "", `${account.name} (${account.account_type})`);
     option.value = account.id;
     option.dataset.institutionId = account.financial_institution_id ?? "";
     elements.accountSelect.appendChild(option);
+    if (elements.installmentFinancialAccount) {
+      const accountOption = createNode("option", "", `${account.name} (${account.account_type})`);
+      accountOption.value = account.id;
+      elements.installmentFinancialAccount.appendChild(accountOption);
+    }
+  });
+
+  if (elements.installmentCategory) {
+    const placeholder = createNode("option", "", "Sem categoria");
+    placeholder.value = "";
+    elements.installmentCategory.replaceChildren(placeholder);
+    state.catalogs.categories.items.forEach((category) => {
+      const option = createNode("option", "", category.name);
+      option.value = category.id;
+      elements.installmentCategory.appendChild(option);
+    });
+  }
+}
+
+function renderMovements() {
+  if (!state.movements.length) {
+    renderEmpty(elements.movementsTable, "Nenhuma movimentacao encontrada", "Ajuste os filtros globais ou importe novos arquivos OFX para preencher esta tela.");
+  } else {
+    elements.movementsTable.innerHTML = tableHtml([
+      { key: "data", label: "Data", formatter: formatDate },
+      { key: "descricao", label: "Descricao", formatter: (_, row) => row.descricao || row.descricao_normalizada || "-" },
+      { key: "banco", label: "Banco", formatter: (value) => value || "-" },
+      { key: "conta_nome", label: "Conta", formatter: (value) => value || "-" },
+      { key: "categoria", label: "Categoria", formatter: (value) => value || "Sem categoria" },
+      { key: "fornecedor", label: "Fornecedor", formatter: (value) => value || "Sem fornecedor" },
+      { key: "tipo_movimento", label: "Tipo", formatter: (value) => badge(value || "adjustment", movementTone(value)) },
+      { key: "valor", label: "Valor", formatter: formatCurrency },
+    ], state.movements);
+  }
+
+  const pagination = state.movementsPagination ?? { page: 1, total_pages: 1, total: 0 };
+  elements.movementsPaginationLabel.textContent = `Pagina ${pagination.page} de ${pagination.total_pages} • ${pagination.total} registros`;
+  elements.movementsPrevPage.disabled = pagination.page <= 1;
+  elements.movementsNextPage.disabled = pagination.page >= pagination.total_pages;
+}
+
+function renderDuplicates() {
+  if (!state.duplicates.length) {
+    renderEmpty(elements.duplicatesTable, "Nenhuma duplicidade encontrada", "Quando existirem lancamentos similares, eles aparecerao aqui para consulta rapida.");
+    return;
+  }
+
+  elements.duplicatesTable.innerHTML = tableHtml([
+    { key: "data", label: "Data", formatter: formatDate },
+    { key: "descricao", label: "Descricao", formatter: (_, row) => row.descricao || row.descricao_normalizada || "-" },
+    { key: "banco", label: "Banco", formatter: (value) => value || "-" },
+    { key: "conta_nome", label: "Conta", formatter: (value) => value || "-" },
+    { key: "fornecedor", label: "Fornecedor", formatter: (value) => value || "Sem fornecedor" },
+    { key: "valor", label: "Valor", formatter: formatCurrency },
+    { key: "status", label: "Status", formatter: (_, row) => badge(row.status || "candidato", "warning") },
+  ], state.duplicates);
+}
+
+function renderInstallments() {
+  if (!state.installments.length) {
+    renderEmpty(elements.installmentsTable, "Nenhum parcelamento cadastrado", "Cadastre compromissos manuais para gerar as parcelas automaticamente.");
+    return;
+  }
+
+  const rows = state.installments.flatMap((plan) => {
+    const items = Array.isArray(plan.items) ? plan.items : [];
+    if (!items.length) {
+      return [{
+        description: plan.description || plan.merchant_name || "Parcelamento",
+        supplier_name: plan.counterparty?.display_name || plan.merchant_name || "-",
+        installment: "-",
+        due_date: null,
+        amount: plan.installment_amount,
+        status: plan.status_code,
+        account_name: plan.financial_account?.name || "-",
+      }];
+    }
+
+    return items.map((item) => ({
+      description: plan.description || plan.merchant_name || "Parcelamento",
+      supplier_name: plan.counterparty?.display_name || plan.merchant_name || "-",
+      installment: `${item.installment_number}/${plan.installment_count}`,
+      due_date: item.due_date,
+      amount: item.amount,
+      status: item.status_code || plan.status_code,
+      account_name: plan.financial_account?.name || "-",
+    }));
+  });
+
+  elements.installmentsTable.innerHTML = tableHtml([
+    { key: "description", label: "Descricao" },
+    { key: "supplier_name", label: "Fornecedor" },
+    { key: "installment", label: "Parcela" },
+    { key: "due_date", label: "Vencimento", formatter: formatDate },
+    { key: "amount", label: "Valor", formatter: formatCurrency },
+    { key: "account_name", label: "Conta" },
+    { key: "status", label: "Status", formatter: (value) => badge(value || "active", value === "completed" ? "success" : value === "cancelled" ? "danger" : "info") },
+  ], rows);
+}
+
+function syncQuickAccountFields() {
+  const isCreditCard = elements.createAccountType.value === "credit_card";
+  document.querySelectorAll("[data-credit-card-only='true']").forEach((field) => {
+    field.disabled = !isCreditCard;
+    field.previousElementSibling?.classList?.toggle("is-disabled", !isCreditCard);
+    if (!isCreditCard) {
+      field.value = "";
+    }
   });
 }
 
@@ -1251,9 +1550,14 @@ async function handleCreateAccount(event) {
         name: elements.createAccountName.value.trim(),
         financialInstitutionId: elements.institutionSelect.value,
         accountType: elements.createAccountType.value,
+        openingBalance: Number(elements.createOpeningBalance.value || 0),
         externalIdentifier: elements.createExternalIdentifier.value.trim(),
         maskedAccountNumber: elements.createMaskedAccountNumber.value.trim(),
         maskedBranchNumber: elements.createMaskedBranchNumber.value.trim(),
+        statementLabel: elements.createStatementLabel.value.trim(),
+        statementClosingDay: elements.createStatementClosingDay.value ? Number(elements.createStatementClosingDay.value) : null,
+        statementDueDay: elements.createStatementDueDay.value ? Number(elements.createStatementDueDay.value) : null,
+        creditLimitAmount: elements.createCreditLimitAmount.value ? Number(elements.createCreditLimitAmount.value) : null,
       },
     });
 
@@ -1264,6 +1568,7 @@ async function handleCreateAccount(event) {
 
     elements.createAccountForm.reset();
     elements.createAccountForm.classList.add("hidden");
+    syncQuickAccountFields();
     await fetchImportOptions();
     renderImportOptions();
     elements.accountSelect.value = payload.account.id;
@@ -1379,6 +1684,47 @@ async function handleHistoryAction(event) {
   }
 }
 
+async function handleSaveInstallment(event) {
+  event.preventDefault();
+  setLoading(elements.saveInstallmentButton, true, "Salvando...");
+  setMessage(elements.installmentMessage, "");
+
+  try {
+    const { response, payload } = await apiFetch("/portal/installments", {
+      method: "POST",
+      body: {
+        supplierName: elements.installmentSupplier.value.trim(),
+        description: elements.installmentDescription.value.trim(),
+        totalAmount: Number(elements.installmentTotalAmount.value || 0),
+        installmentCount: Number(elements.installmentCount.value || 0),
+        installmentAmount: Number(elements.installmentAmount.value || 0),
+        firstDueDate: elements.installmentFirstDueDate.value,
+        categoryId: elements.installmentCategory.value || null,
+        financialAccountId: elements.installmentFinancialAccount.value || null,
+        statusCode: elements.installmentStatus.value,
+        notes: elements.installmentNotes.value.trim(),
+      },
+    });
+
+    if (!response.ok) {
+      setMessage(elements.installmentMessage, payload?.erro || "Nao foi possivel salvar o parcelamento.", "error");
+      return;
+    }
+
+    elements.installmentForm.reset();
+    elements.installmentStatus.value = "active";
+    await Promise.all([fetchInstallments(), fetchOverview()]);
+    renderInstallments();
+    renderInstallmentSummary();
+    setMessage(elements.installmentMessage, "Parcelamento salvo com sucesso.", "success");
+    showToast("Parcelamento cadastrado com sucesso.", "success");
+  } catch (error) {
+    setMessage(elements.installmentMessage, error.message || "Falha ao salvar o parcelamento.", "error");
+  } finally {
+    setLoading(elements.saveInstallmentButton, false);
+  }
+}
+
 async function loadSection(sectionName) {
   if (sectionName === "dashboard") {
     await fetchOverview();
@@ -1391,6 +1737,19 @@ async function loadSection(sectionName) {
   if (sectionName === "imports") {
     await fetchImportOptions();
     renderImportOptions();
+    syncQuickAccountFields();
+    return;
+  }
+
+  if (sectionName === "movements") {
+    await fetchMovements();
+    renderMovements();
+    return;
+  }
+
+  if (sectionName === "duplicates") {
+    await fetchDuplicates();
+    renderDuplicates();
     return;
   }
 
@@ -1415,9 +1774,23 @@ async function loadSection(sectionName) {
     return;
   }
 
+  if (sectionName === "installments") {
+    await Promise.all([fetchInstallments(), fetchImportOptions(), fetchCatalog("categories", 1)]);
+    renderImportOptions();
+    renderInstallments();
+    return;
+  }
+
   if (sectionName === "suppliers") {
     await fetchCatalog("counterparties", state.catalogs.counterparties.pagination.page || 1);
     renderCatalog("counterparties");
+    return;
+  }
+
+  if (sectionName === "accounts") {
+    await Promise.all([fetchImportOptions(), fetchCatalog("accounts", state.catalogs.accounts.pagination.page || 1)]);
+    renderImportOptions();
+    renderCatalog("accounts");
     return;
   }
 
@@ -1447,10 +1820,13 @@ async function refreshActiveSection() {
 
 async function refreshAllData() {
   try {
-    await Promise.all([fetchOverview(), fetchImportOptions(), fetchHistory()]);
+    await Promise.all([fetchOverview(), fetchImportOptions(), fetchHistory(), fetchMovements(), fetchDuplicates(), fetchInstallments()]);
     renderDashboard();
     renderImportOptions();
     renderHistory();
+    renderMovements();
+    renderDuplicates();
+    renderInstallments();
     syncSettingsForm();
     syncProfileForm();
   } catch (error) {
@@ -1785,6 +2161,7 @@ function registerEventHandlers() {
   elements.toggleAccountForm.addEventListener("click", () => {
     elements.createAccountForm.classList.toggle("hidden");
   });
+  elements.createAccountType.addEventListener("change", syncQuickAccountFields);
   elements.createAccountForm.addEventListener("submit", handleCreateAccount);
   elements.ofxFileInput.addEventListener("change", (event) => handleFiles(event.target.files));
   elements.dropzone.addEventListener("dragover", (event) => {
@@ -1834,6 +2211,72 @@ function registerEventHandlers() {
     renderHistory();
   });
   elements.historyTable.addEventListener("click", handleHistoryAction);
+  elements.applyGlobalFilters.addEventListener("click", async () => {
+    state.globalFilters.competence = elements.filterCompetence.value;
+    state.globalFilters.bank = elements.filterBank.value;
+    state.globalFilters.financialAccountId = elements.filterAccount.value;
+    state.globalFilters.movementType = elements.filterType.value;
+    state.globalFilters.category = elements.filterCategory.value;
+    state.globalFilters.search = elements.movementsSearch.value.trim();
+    state.movementsPage = 1;
+    await refreshAllData();
+    showToast("Filtros aplicados.", "info");
+  });
+  elements.clearGlobalFilters.addEventListener("click", async () => {
+    state.globalFilters = {
+      competence: new Date().toISOString().slice(0, 7),
+      bank: "",
+      financialAccountId: "",
+      movementType: "",
+      category: "",
+      search: "",
+    };
+    elements.filterCompetence.value = state.globalFilters.competence;
+    elements.filterBank.value = "";
+    elements.filterAccount.value = "";
+    elements.filterType.value = "";
+    elements.filterCategory.value = "";
+    elements.movementsSearch.value = "";
+    state.movementsPage = 1;
+    await refreshAllData();
+    showToast("Filtros limpos.", "info");
+  });
+  elements.movementsSearch.addEventListener("input", () => {
+    state.globalFilters.search = elements.movementsSearch.value.trim();
+  });
+  elements.refreshMovementsButton.addEventListener("click", async () => {
+    setLoading(elements.refreshMovementsButton, true, "Atualizando...");
+    try {
+      state.movementsPage = 1;
+      state.globalFilters.search = elements.movementsSearch.value.trim();
+      await fetchMovements();
+      renderMovements();
+      showToast("Movimentacoes atualizadas.", "info");
+    } finally {
+      setLoading(elements.refreshMovementsButton, false);
+    }
+  });
+  elements.movementsPrevPage.addEventListener("click", async () => {
+    state.movementsPage = Math.max(1, (state.movementsPagination.page || 1) - 1);
+    await fetchMovements();
+    renderMovements();
+  });
+  elements.movementsNextPage.addEventListener("click", async () => {
+    state.movementsPage = Math.min(state.movementsPagination.total_pages || 1, (state.movementsPagination.page || 1) + 1);
+    await fetchMovements();
+    renderMovements();
+  });
+  elements.refreshDuplicatesButton.addEventListener("click", async () => {
+    setLoading(elements.refreshDuplicatesButton, true, "Atualizando...");
+    try {
+      await fetchDuplicates();
+      renderDuplicates();
+      showToast("Duplicidades atualizadas.", "info");
+    } finally {
+      setLoading(elements.refreshDuplicatesButton, false);
+    }
+  });
+  elements.installmentForm.addEventListener("submit", handleSaveInstallment);
 
   Object.entries(ENTITY_CONFIG).forEach(([entityName, config]) => {
     if (config.searchId) {
@@ -1889,6 +2332,7 @@ function registerEventHandlers() {
 
 async function bootstrap() {
   registerEventHandlers();
+  syncQuickAccountFields();
 
   supabase.auth.onAuthStateChange(async (event, session) => {
     if (event === "PASSWORD_RECOVERY") {

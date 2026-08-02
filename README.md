@@ -92,3 +92,11 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - a area de configuracoes passou a enfatizar organizacao, cadastro global e continuidade do fluxo manual oficial;
 - o perfil ganhou resumo visual com avatar por iniciais para contas sem foto;
 - a responsividade do menu, das tabelas e das barras de acao foi endurecida para reduzir overflow horizontal em telas pequenas.
+
+## Estado local da F05
+
+- o dashboard passou a destacar saldo geral, receitas, despesas, resultado, contas financeiras, fatura de cartao e resumo de parcelamentos;
+- filtros globais de competencia, banco, conta, tipo e categoria passaram a dirigir dashboard, movimentacoes e duplicidades;
+- o menu ganhou as secoes `Movimentacoes`, `Duplicidades` e `Parcelamentos`;
+- `Contas Financeiras` passou a expor tipos como `wallet`, `manual` e `credit_card` tambem no fluxo rapido de importacao;
+- o cadastro manual de parcelamentos gera a base operacional para compromissos mensais antes mesmo da importacao OFX.

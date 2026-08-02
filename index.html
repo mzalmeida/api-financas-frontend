@@ -147,10 +147,12 @@
       <nav id="mainNav" class="nav-stack" aria-label="Navegacao principal">
         <button type="button" class="nav-item is-active" data-section="dashboard">Dashboard</button>
         <button type="button" class="nav-item" data-section="imports">Importacoes</button>
-        <button type="button" class="nav-item" data-section="history">Historico</button>
+        <button type="button" class="nav-item" data-section="movements">Movimentacoes</button>
+        <button type="button" class="nav-item" data-section="duplicates">Duplicidades</button>
+        <button type="button" class="nav-item" data-section="history">Historico OFX</button>
+        <button type="button" class="nav-item" data-section="installments">Parcelamentos</button>
         <button type="button" class="nav-item" data-section="categories">Categorias</button>
-        <button type="button" class="nav-item" data-section="accounts">Contas</button>
-        <button type="button" class="nav-item" data-section="cards">Cartoes</button>
+        <button type="button" class="nav-item" data-section="accounts">Contas Financeiras</button>
         <button type="button" class="nav-item" data-section="suppliers">Fornecedores</button>
         <button type="button" class="nav-item" data-section="settings">Configuracoes</button>
         <button type="button" class="nav-item" data-section="profile">Perfil</button>
@@ -183,6 +185,36 @@
         </div>
       </header>
 
+      <section class="panel global-filters" aria-label="Filtros globais">
+        <div class="section-head compact">
+          <div>
+            <p class="eyebrow">Filtros globais</p>
+            <h4>Competencia, banco, conta, tipo e categoria</h4>
+          </div>
+        </div>
+        <div class="toolbar-inline filters-grid">
+          <input type="month" id="filterCompetence">
+          <select id="filterBank">
+            <option value="">Todos os bancos</option>
+          </select>
+          <select id="filterAccount">
+            <option value="">Todas as contas</option>
+          </select>
+          <select id="filterType">
+            <option value="">Todos os tipos</option>
+            <option value="income">Receita</option>
+            <option value="expense">Despesa</option>
+            <option value="transfer">Transferencia</option>
+            <option value="adjustment">Ajuste</option>
+          </select>
+          <select id="filterCategory">
+            <option value="">Todas as categorias</option>
+          </select>
+          <button type="button" id="applyGlobalFilters" class="btn btn-primary">Aplicar filtros</button>
+          <button type="button" id="clearGlobalFilters" class="btn btn-ghost">Limpar</button>
+        </div>
+      </section>
+
       <p id="globalMessage" class="message global-message panel" aria-live="polite"></p>
 
       <main class="content-shell">
@@ -194,9 +226,9 @@
                   <p class="eyebrow">Resumo executivo</p>
                   <h3 id="dashboardGreeting">Seu panorama financeiro em um unico lugar</h3>
                 </div>
-                <span id="lastImportBadge" class="status-badge neutral">Ultima importacao: --</span>
+                <span id="lastImportBadge" class="status-badge neutral">Competencia ativa: --</span>
               </div>
-              <p class="section-copy">Saldo, receitas, despesas, transferencias e atividade recente alimentados diretamente pelos dados reais do usuario autenticado.</p>
+              <p class="section-copy">Ao abrir o RebeccaCash, voce deve entender saldo disponivel, ritmo do mes, pressao de fatura e compromissos parcelados sem precisar interpretar tabelas soltas.</p>
             </article>
 
             <article class="hero-card panel accent-card">
@@ -211,6 +243,28 @@
           </div>
 
           <div id="statsGrid" class="stats-grid"></div>
+
+          <div class="analytics-grid">
+            <article class="panel">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Saldo consolidado</p>
+                  <h3>Por conta financeira</h3>
+                </div>
+              </div>
+              <div id="accountBalanceList" class="data-region"></div>
+            </article>
+
+            <article class="panel">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Cartao de credito</p>
+                  <h3>Fatura, vencimento e limite</h3>
+                </div>
+              </div>
+              <div id="cardBillSummary" class="data-region"></div>
+            </article>
+          </div>
 
           <div class="analytics-grid">
             <article class="panel">
@@ -263,6 +317,16 @@
                 </div>
               </div>
               <div id="bankSummary" class="data-region"></div>
+            </article>
+
+            <article class="panel">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Parcelamentos</p>
+                  <h3>Compromissos em aberto</h3>
+                </div>
+              </div>
+              <div id="installmentSummary" class="data-region"></div>
             </article>
           </div>
         </section>
@@ -322,12 +386,14 @@
                 <label for="createAccountType">Tipo da conta</label>
                 <select id="createAccountType">
                   <option value="checking">Conta corrente</option>
-                  <option value="payment">Conta de pagamento</option>
                   <option value="savings">Poupanca</option>
-                  <option value="investment">Investimento</option>
-                  <option value="cash">Caixa</option>
-                  <option value="other">Outro</option>
+                  <option value="wallet">Carteira</option>
+                  <option value="credit_card">Cartao de credito</option>
+                  <option value="manual">Conta manual</option>
                 </select>
+
+                <label for="createOpeningBalance">Saldo inicial</label>
+                <input type="number" id="createOpeningBalance" step="0.01" placeholder="0">
 
                 <label for="createExternalIdentifier">Identificador externo</label>
                 <input type="text" id="createExternalIdentifier" maxlength="120" placeholder="ACCTID, alias ou identificador">
@@ -337,6 +403,18 @@
 
                 <label for="createMaskedBranchNumber">Agencia mascarada</label>
                 <input type="text" id="createMaskedBranchNumber" maxlength="20" placeholder="***1">
+
+                <label for="createStatementLabel">Descricao da fatura</label>
+                <input type="text" id="createStatementLabel" maxlength="120" placeholder="Nubank Platinum" data-credit-card-only="true">
+
+                <label for="createStatementClosingDay">Fechamento da fatura</label>
+                <input type="number" id="createStatementClosingDay" min="1" max="31" placeholder="Dia 1-31" data-credit-card-only="true">
+
+                <label for="createStatementDueDay">Vencimento da fatura</label>
+                <input type="number" id="createStatementDueDay" min="1" max="31" placeholder="Dia 1-31" data-credit-card-only="true">
+
+                <label for="createCreditLimitAmount">Limite do cartao</label>
+                <input type="number" id="createCreditLimitAmount" step="0.01" min="0" placeholder="0" data-credit-card-only="true">
 
                 <button type="submit" id="createAccountButton" class="btn btn-primary">Salvar conta</button>
               </form>
@@ -428,6 +506,42 @@
           </article>
         </section>
 
+        <section id="section-movements" class="section-stack hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Movimentacoes</p>
+              <h3>Pesquisa, filtros e classificacao visual</h3>
+            </div>
+            <div class="toolbar-inline">
+              <input type="search" id="movementsSearch" class="compact-search" placeholder="Pesquisar descricao, banco, categoria ou fornecedor">
+              <button type="button" id="refreshMovementsButton" class="btn btn-secondary">Atualizar</button>
+            </div>
+          </div>
+          <article class="panel">
+            <div id="movementsTable" class="data-region"></div>
+            <div class="pagination-row">
+              <button type="button" id="movementsPrevPage" class="btn btn-ghost">Pagina anterior</button>
+              <span id="movementsPaginationLabel" class="pagination-label">Pagina 1</span>
+              <button type="button" id="movementsNextPage" class="btn btn-ghost">Proxima pagina</button>
+            </div>
+          </article>
+        </section>
+
+        <section id="section-duplicates" class="section-stack hidden">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Duplicidades</p>
+              <h3>Localizacao rapida de lancamentos similares</h3>
+            </div>
+            <div class="toolbar-inline">
+              <button type="button" id="refreshDuplicatesButton" class="btn btn-secondary">Atualizar duplicidades</button>
+            </div>
+          </div>
+          <article class="panel">
+            <div id="duplicatesTable" class="data-region"></div>
+          </article>
+        </section>
+
         <section id="section-categories" class="section-stack hidden">
           <div class="section-head">
             <div>
@@ -470,25 +584,75 @@
           </article>
         </section>
 
-        <section id="section-cards" class="section-stack hidden">
+        <section id="section-installments" class="section-stack hidden">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Cadastros</p>
-              <h3>Cartoes</h3>
-            </div>
-            <div class="toolbar-inline">
-              <input type="search" id="search-cards" class="compact-search" placeholder="Pesquisar cartoes">
-              <button type="button" class="btn btn-primary" data-open-entity="cards">Novo cartao</button>
+              <p class="eyebrow">Parcelamentos</p>
+              <h3>Mercado Livre e compromissos manuais</h3>
             </div>
           </div>
-          <article class="panel">
-            <div id="table-cards" class="data-region"></div>
-            <div class="pagination-row">
-              <button type="button" class="btn btn-ghost" data-page-prev="cards">Pagina anterior</button>
-              <span id="pagination-cards" class="pagination-label">Pagina 1</span>
-              <button type="button" class="btn btn-ghost" data-page-next="cards">Proxima pagina</button>
-            </div>
-          </article>
+          <div class="split-grid">
+            <article class="panel">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">Cadastro manual</p>
+                  <h4>Novo parcelamento</h4>
+                </div>
+              </div>
+              <form id="installmentForm" class="form-grid" novalidate>
+                <label for="installmentSupplier">Fornecedor</label>
+                <input type="text" id="installmentSupplier" maxlength="160" placeholder="Mercado Livre, Shopee, Loja local">
+
+                <label for="installmentDescription">Descricao</label>
+                <input type="text" id="installmentDescription" maxlength="220" placeholder="Compra parcelada">
+
+                <label for="installmentTotalAmount">Valor total</label>
+                <input type="number" id="installmentTotalAmount" step="0.01" min="0">
+
+                <label for="installmentCount">Quantidade de parcelas</label>
+                <input type="number" id="installmentCount" min="1" max="60">
+
+                <label for="installmentAmount">Valor da parcela</label>
+                <input type="number" id="installmentAmount" step="0.01" min="0">
+
+                <label for="installmentFirstDueDate">Primeiro vencimento</label>
+                <input type="date" id="installmentFirstDueDate">
+
+                <label for="installmentCategory">Categoria</label>
+                <select id="installmentCategory">
+                  <option value="">Sem categoria</option>
+                </select>
+
+                <label for="installmentFinancialAccount">Conta financeira</label>
+                <select id="installmentFinancialAccount">
+                  <option value="">Sem conta vinculada</option>
+                </select>
+
+                <label for="installmentStatus">Situacao</label>
+                <select id="installmentStatus">
+                  <option value="active">Ativo</option>
+                  <option value="completed">Concluido</option>
+                  <option value="cancelled">Cancelado</option>
+                </select>
+
+                <label for="installmentNotes">Observacoes</label>
+                <textarea id="installmentNotes" rows="3" placeholder="Detalhes do parcelamento"></textarea>
+
+                <button type="submit" id="saveInstallmentButton" class="btn btn-primary">Salvar parcelamento</button>
+              </form>
+              <p id="installmentMessage" class="message" aria-live="polite"></p>
+            </article>
+
+            <article class="panel">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">Compromissos</p>
+                  <h4>Parcelas geradas automaticamente</h4>
+                </div>
+              </div>
+              <div id="installmentsTable" class="data-region"></div>
+            </article>
+          </div>
         </section>
 
         <section id="section-suppliers" class="section-stack hidden">
