@@ -44,7 +44,7 @@ const ENTITY_CONFIG = {
     ],
     columns: [
       { key: "name", label: "Nome" },
-      { key: "movement_type", label: "Tipo" },
+      { key: "movement_type", label: "Tipo", formatter: (value) => movementTypeLabel(value) },
       { key: "color_hex", label: "Cor" },
       { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
     ],
@@ -67,7 +67,7 @@ const ENTITY_CONFIG = {
     ],
     columns: [
       { key: "name", label: "Conta financeira" },
-      { key: "account_type", label: "Tipo" },
+      { key: "account_type", label: "Tipo", formatter: (value) => accountTypeLabel(value) },
       { key: "statement_due_day", label: "Vencimento" },
       { key: "currency_code", label: "Moeda" },
       { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
@@ -351,6 +351,49 @@ function catalogState() {
     pagination: { page: 1, total_pages: 1, total: 0 },
     search: "",
   };
+}
+
+function accountTypeLabel(value) {
+  const labels = {
+    checking: "Conta corrente",
+    savings: "Poupanca",
+    payment: "Conta de pagamento",
+    wallet: "Carteira",
+    manual: "Conta manual",
+    credit_card: "Cartao de credito",
+    investment: "Investimento",
+    cash: "Dinheiro",
+    other: "Outra conta",
+  };
+  return labels[value] || value || "-";
+}
+
+function movementTypeLabel(value) {
+  const labels = {
+    income: "Receita",
+    expense: "Despesa",
+    transfer: "Transferencia",
+    adjustment: "Ajuste",
+  };
+  return labels[value] || value || "-";
+}
+
+function duplicateRuleLabel(value) {
+  const labels = {
+    duplicate_group_key_repetido: "Mesmo identificador externo",
+    dedup_hash_repetido: "Mesmo hash operacional",
+  };
+  return labels[value] || "Sinal semelhante";
+}
+
+function duplicateDecisionLabel(value) {
+  const labels = {
+    pending: "Revisar",
+    reviewed: "Nao duplicada",
+    matched: "Manter esta",
+    ignored: "Ignorada",
+  };
+  return labels[value] || "Pendente";
 }
 
 function loadStoredSession() {
@@ -720,7 +763,10 @@ async function fetchDuplicates() {
 async function fetchInstallments() {
   const { response, payload } = await apiFetch("/portal/installments");
   if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar parcelamentos.");
-  state.installments = payload.items ?? [];
+  state.installments = (payload.items ?? []).map((item) => ({
+    ...item,
+    items: item.items ?? item.installment_plan_items ?? [],
+  }));
 }
 
 async function fetchHistory() {
@@ -850,7 +896,7 @@ function renderGlobalFilterOptions() {
     placeholder.value = "";
     elements.filterAccount.replaceChildren(placeholder);
     (options.accounts ?? []).forEach((account) => {
-      const option = createNode("option", "", `${account.name} (${account.account_type})`);
+      const option = createNode("option", "", `${account.name} (${account.account_type_label || accountTypeLabel(account.account_type)})`);
       option.value = account.id;
       option.selected = account.id === state.globalFilters.financialAccountId;
       elements.filterAccount.appendChild(option);
@@ -883,7 +929,7 @@ function renderAccountBalances() {
     const card = createNode("article", "row-card");
     const head = createNode("div", "chart-bar-head");
     head.append(createNode("strong", "", row.name), createNode("span", "", formatCurrency(row.current_balance)));
-    card.append(head, createNode("span", "mini-copy", `${row.institution_name || "Sem instituicao"} • ${row.account_type}`));
+    card.append(head, createNode("span", "mini-copy", `${row.institution_name || "Sem instituicao"} • ${row.account_type_label || accountTypeLabel(row.account_type)}`));
     elements.accountBalanceList.appendChild(card);
   });
 }
@@ -987,12 +1033,12 @@ function renderImportOptions() {
   elements.accountSelect.replaceChildren(accountPlaceholder);
   elements.installmentFinancialAccount?.replaceChildren(createNode("option", "", "Sem conta vinculada"));
   state.options.accounts.forEach((account) => {
-    const option = createNode("option", "", `${account.name} (${account.account_type})`);
+    const option = createNode("option", "", `${account.name} (${accountTypeLabel(account.account_type)})`);
     option.value = account.id;
     option.dataset.institutionId = account.financial_institution_id ?? "";
     elements.accountSelect.appendChild(option);
     if (elements.installmentFinancialAccount) {
-      const accountOption = createNode("option", "", `${account.name} (${account.account_type})`);
+      const accountOption = createNode("option", "", `${account.name} (${accountTypeLabel(account.account_type)})`);
       accountOption.value = account.id;
       elements.installmentFinancialAccount.appendChild(accountOption);
     }
@@ -1021,8 +1067,13 @@ function renderMovements() {
       { key: "conta_nome", label: "Conta", formatter: (value) => value || "-" },
       { key: "categoria", label: "Categoria", formatter: (value) => value || "Sem categoria" },
       { key: "fornecedor", label: "Fornecedor", formatter: (value) => value || "Sem fornecedor" },
-      { key: "tipo_movimento", label: "Tipo", formatter: (value) => badge(value || "adjustment", movementTone(value)) },
+      { key: "tipo_movimento", label: "Tipo", formatter: (value) => badge(movementTypeLabel(value || "adjustment"), movementTone(value)) },
       { key: "valor", label: "Valor", formatter: formatCurrency },
+      {
+        key: "actions",
+        label: "Acoes",
+        formatter: (_, row) => `<button type="button" class="btn btn-ghost movement-action" data-action="categorize" data-id="${row.id}">Categorizar</button>`,
+      },
     ], state.movements);
   }
 
@@ -1044,8 +1095,19 @@ function renderDuplicates() {
     { key: "banco", label: "Banco", formatter: (value) => value || "-" },
     { key: "conta_nome", label: "Conta", formatter: (value) => value || "-" },
     { key: "fornecedor", label: "Fornecedor", formatter: (value) => value || "Sem fornecedor" },
+    { key: "duplicate_rule", label: "Regra", formatter: (value) => duplicateRuleLabel(value) },
+    { key: "duplicate_group", label: "Grupo", formatter: (value) => value || "-" },
     { key: "valor", label: "Valor", formatter: formatCurrency },
-    { key: "status", label: "Status", formatter: (_, row) => badge(row.status || "candidato", "warning") },
+    { key: "status", label: "Status", formatter: (value) => badge(duplicateDecisionLabel(value), value === "matched" ? "success" : value === "reviewed" ? "info" : "warning") },
+    {
+      key: "actions",
+      label: "Acoes",
+      formatter: (_, row) => [
+        `<button type="button" class="btn btn-ghost duplicate-action" data-action="not_duplicate" data-id="${row.id}">Nao duplicada</button>`,
+        `<button type="button" class="btn btn-ghost duplicate-action" data-action="keep" data-id="${row.id}">Manter esta</button>`,
+        `<button type="button" class="btn btn-ghost duplicate-action" data-action="review_later" data-id="${row.id}">Revisar depois</button>`,
+      ].join(" "),
+    },
   ], state.duplicates);
 }
 
@@ -1059,6 +1121,8 @@ function renderInstallments() {
     const items = Array.isArray(plan.items) ? plan.items : [];
     if (!items.length) {
       return [{
+        plan_id: plan.id,
+        item_id: null,
         description: plan.description || plan.merchant_name || "Parcelamento",
         supplier_name: plan.counterparty?.display_name || plan.merchant_name || "-",
         installment: "-",
@@ -1070,6 +1134,9 @@ function renderInstallments() {
     }
 
     return items.map((item) => ({
+      plan_id: plan.id,
+      item_id: item.id,
+      transaction_id: item.transaction_id || null,
       description: plan.description || plan.merchant_name || "Parcelamento",
       supplier_name: plan.counterparty?.display_name || plan.merchant_name || "-",
       installment: `${item.installment_number}/${plan.installment_count}`,
@@ -1088,6 +1155,15 @@ function renderInstallments() {
     { key: "amount", label: "Valor", formatter: formatCurrency },
     { key: "account_name", label: "Conta" },
     { key: "status", label: "Status", formatter: (value) => badge(value || "active", value === "completed" ? "success" : value === "cancelled" ? "danger" : "info") },
+    {
+      key: "actions",
+      label: "Acoes",
+      formatter: (_, row) => [
+        `<button type="button" class="btn btn-ghost installment-action" data-action="mark-paid" data-plan-id="${row.plan_id}" data-item-id="${row.item_id || ""}">Marcar paga</button>`,
+        `<button type="button" class="btn btn-ghost installment-action" data-action="link" data-plan-id="${row.plan_id}" data-item-id="${row.item_id || ""}">Vincular</button>`,
+        `<button type="button" class="btn btn-ghost installment-action" data-action="cancel-plan" data-plan-id="${row.plan_id}">Cancelar</button>`,
+      ].join(" "),
+    },
   ], rows);
 }
 
@@ -1347,7 +1423,14 @@ function openDrawer(entityName, item = null) {
     if (field.type === "select") {
       input = document.createElement("select");
       input.appendChild(new Option("Selecione", ""));
-      field.options.forEach((optionValue) => input.appendChild(new Option(optionValue, optionValue)));
+      field.options.forEach((optionValue) => {
+        const label = field.name === "account_type"
+          ? accountTypeLabel(optionValue)
+          : field.name === "movement_type"
+            ? movementTypeLabel(optionValue)
+            : optionValue;
+        input.appendChild(new Option(label, optionValue));
+      });
     } else if (field.type === "textarea") {
       input = document.createElement("textarea");
     } else if (field.type === "checkbox") {
@@ -1577,6 +1660,158 @@ async function handleCreateAccount(event) {
     setMessage(elements.importMessage, error.message || "Falha ao criar a conta.", "error");
   } finally {
     setLoading(elements.createAccountButton, false);
+  }
+}
+
+function buildCategoryPrompt() {
+  return state.catalogs.categories.items
+    .map((category, index) => `${index + 1}. ${category.name}`)
+    .join("\n");
+}
+
+async function handleMovementTableAction(event) {
+  const button = event.target.closest(".movement-action[data-action='categorize']");
+  if (!button) return;
+
+  const movement = state.movements.find((item) => item.id === button.dataset.id);
+  if (!movement) return;
+
+  const selection = window.prompt(`Informe o numero da categoria para "${movement.descricao || movement.descricao_normalizada || "Movimentacao"}":\n\n${buildCategoryPrompt()}`);
+  if (!selection) return;
+
+  const index = Number.parseInt(selection, 10) - 1;
+  const category = state.catalogs.categories.items[index];
+  if (!category?.id) {
+    showToast("Categoria invalida.", "error");
+    return;
+  }
+
+  setLoading(button, true, "Salvando...");
+  try {
+    const { response, payload } = await apiFetch(`/portal/movements/${movement.id}`, {
+      method: "PATCH",
+      body: {
+        categoryId: category.id,
+        notes: movement.observacoes || null,
+      },
+    });
+
+    if (!response.ok) {
+      showToast(payload?.erro || "Nao foi possivel atualizar a movimentacao.", "error");
+      return;
+    }
+
+    await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates()]);
+    renderMovements();
+    renderDashboard();
+    renderDuplicates();
+    showToast("Categoria atualizada sem recarregar a pagina.", "success");
+  } finally {
+    setLoading(button, false);
+  }
+}
+
+async function handleDuplicateTableAction(event) {
+  const button = event.target.closest(".duplicate-action");
+  if (!button) return;
+
+  setLoading(button, true, "Salvando...");
+  try {
+    const { response, payload } = await apiFetch(`/portal/duplicates/${button.dataset.id}`, {
+      method: "PATCH",
+      body: {
+        decision: button.dataset.action,
+      },
+    });
+
+    if (!response.ok) {
+      showToast(payload?.erro || "Nao foi possivel registrar a decisao.", "error");
+      return;
+    }
+
+    await Promise.all([fetchDuplicates(), fetchMovements(), fetchOverview()]);
+    renderDuplicates();
+    renderMovements();
+    renderDashboard();
+    showToast("Decisao de duplicidade registrada.", "success");
+  } finally {
+    setLoading(button, false);
+  }
+}
+
+async function handleInstallmentTableAction(event) {
+  const button = event.target.closest(".installment-action");
+  if (!button) return;
+
+  const { action, planId, itemId } = button.dataset;
+  setLoading(button, true, "Salvando...");
+
+  try {
+    if (action === "cancel-plan") {
+      const { response, payload } = await apiFetch(`/portal/installments/${planId}`, {
+        method: "PATCH",
+        body: { statusCode: "cancelled" },
+      });
+      if (!response.ok) {
+        showToast(payload?.erro || "Nao foi possivel cancelar o parcelamento.", "error");
+        return;
+      }
+      await Promise.all([fetchInstallments(), fetchOverview()]);
+      renderInstallments();
+      renderDashboard();
+      showToast("Parcelamento cancelado com seguranca.", "success");
+      return;
+    }
+
+    if (!itemId) {
+      showToast("Selecione uma linha de parcela para esta acao.", "warning");
+      return;
+    }
+
+    if (action === "mark-paid") {
+      const { response, payload } = await apiFetch(`/portal/installments/${planId}/items/${itemId}/link`, {
+        method: "POST",
+        body: { statusCode: "paid" },
+      });
+      if (!response.ok) {
+        showToast(payload?.erro || "Nao foi possivel marcar a parcela como paga.", "error");
+        return;
+      }
+      await Promise.all([fetchInstallments(), fetchOverview()]);
+      renderInstallments();
+      renderDashboard();
+      showToast("Parcela marcada como paga.", "success");
+      return;
+    }
+
+    if (action === "link") {
+      const candidates = state.movements
+        .map((item, index) => `${index + 1}. ${formatDate(item.data)} • ${item.descricao || item.descricao_normalizada || "-"} • ${formatCurrency(item.valor)}`)
+        .join("\n");
+      const selection = window.prompt(`Informe o numero da movimentacao para vincular a parcela:\n\n${candidates}`);
+      if (!selection) return;
+      const index = Number.parseInt(selection, 10) - 1;
+      const movement = state.movements[index];
+      if (!movement?.id) {
+        showToast("Movimentacao invalida.", "error");
+        return;
+      }
+      const { response, payload } = await apiFetch(`/portal/installments/${planId}/items/${itemId}/link`, {
+        method: "POST",
+        body: { transactionId: movement.id },
+      });
+      if (!response.ok) {
+        showToast(payload?.erro || "Nao foi possivel vincular a parcela.", "error");
+        return;
+      }
+      await Promise.all([fetchInstallments(), fetchOverview(), fetchMovements()]);
+      renderInstallments();
+      renderDashboard();
+      renderMovements();
+      showToast("Parcela vinculada a movimentacao.", "success");
+    }
+  } finally {
+    setLoading(button, false);
   }
 }
 
@@ -2211,6 +2446,9 @@ function registerEventHandlers() {
     renderHistory();
   });
   elements.historyTable.addEventListener("click", handleHistoryAction);
+  elements.movementsTable.addEventListener("click", handleMovementTableAction);
+  elements.duplicatesTable.addEventListener("click", handleDuplicateTableAction);
+  elements.installmentsTable.addEventListener("click", handleInstallmentTableAction);
   elements.applyGlobalFilters.addEventListener("click", async () => {
     state.globalFilters.competence = elements.filterCompetence.value;
     state.globalFilters.bank = elements.filterBank.value;
