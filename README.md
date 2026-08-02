@@ -45,3 +45,17 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - apenas `SUPABASE_URL` e `SUPABASE_ANON_KEY` podem ser expostos para o fluxo restrito de recuperacao;
 - apenas mensagens de erro genericas devem aparecer para o usuario;
 - `indexantg.html` permanece somente como legado de referencia e nao como fluxo oficial.
+
+## Estado local da F04-E01
+
+- o frontend foi redesenhado como portal responsivo com cabecalho, menu principal, cards de resumo e secoes separadas;
+- a secao `Importar OFX` passou a oferecer:
+  - selecao ou arraste de arquivo `.ofx`;
+  - selecao de instituicao e conta financeira;
+  - criacao orientada de conta financeira;
+  - preview antes da gravacao definitiva;
+  - confirmacao da importacao;
+  - historico com detalhes e cancelamento de importacoes nao confirmadas;
+- a navegacao continua em HTML, CSS e JavaScript puro, sem framework adicional;
+- o fluxo de recuperacao de senha publicado foi preservado com `redirectTo` apontando somente para `https://api-financas-frontend.onrender.com`;
+- o frontend continua sem `service_role` e sem uso de `innerHTML` para dados retornados pela API funcional.

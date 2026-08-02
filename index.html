@@ -3,88 +3,358 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Financas</title>
+  <title>Sistema Financeiro Pessoal</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="container">
-    <section id="login" class="card">
-      <h1>Login</h1>
-      <p class="subtitulo">Entre com sua conta configurada no Supabase Auth.</p>
-
-      <form id="loginForm" novalidate>
-        <label for="usuario">Email</label>
-        <input type="email" id="usuario" name="usuario" placeholder="voce@exemplo.com" autocomplete="username" required>
-
-        <label for="senha">Senha</label>
-        <input type="password" id="senha" name="senha" placeholder="Sua senha" autocomplete="current-password" required>
-
-        <button type="submit" id="loginButton">Entrar</button>
-      </form>
-
-      <button type="button" id="showForgotPassword" class="btn-link">Esqueci minha senha</button>
-      <p id="msg" class="mensagem" aria-live="polite"></p>
-    </section>
-
-    <section id="forgotPassword" class="card hidden">
-      <h1>Recuperar senha</h1>
-      <p class="subtitulo">Informe seu e-mail para receber um link seguro de redefinicao.</p>
-
-      <form id="forgotPasswordForm" novalidate>
-        <label for="recoveryEmail">Email</label>
-        <input type="email" id="recoveryEmail" name="recoveryEmail" placeholder="voce@exemplo.com" autocomplete="email" required>
-
-        <button type="submit" id="forgotPasswordButton">Enviar link</button>
-      </form>
-
-      <div class="acoes-auxiliares">
-        <button type="button" id="backToLoginFromForgot" class="btn-link">Voltar ao login</button>
-      </div>
-
-      <p id="forgotPasswordMsg" class="mensagem" aria-live="polite"></p>
-    </section>
-
-    <section id="resetPassword" class="card hidden">
-      <h1>Definir nova senha</h1>
-      <p id="resetPasswordSubtitle" class="subtitulo">Use o link seguro recebido por e-mail para definir sua nova senha.</p>
-
-      <form id="resetPasswordForm" novalidate>
-        <label for="newPassword">Nova senha</label>
-        <input type="password" id="newPassword" name="newPassword" placeholder="No minimo 8 caracteres" autocomplete="new-password" required>
-
-        <label for="confirmPassword">Confirmar nova senha</label>
-        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repita a nova senha" autocomplete="new-password" required>
-
-        <button type="submit" id="resetPasswordButton">Salvar nova senha</button>
-      </form>
-
-      <div class="acoes-auxiliares">
-        <button type="button" id="backToLoginFromReset" class="btn-link">Voltar ao login</button>
-      </div>
-
-      <p id="resetPasswordMsg" class="mensagem" aria-live="polite"></p>
-    </section>
-
-    <section id="dados" class="card hidden">
-      <div class="topo">
-        <div>
-          <h1>Dashboard de Gastos</h1>
-          <p id="sessionInfo" class="subtitulo"></p>
+  <div class="page-shell">
+    <main id="authShell" class="auth-shell">
+      <section id="login" class="panel auth-panel">
+        <div class="brand-block">
+          <p class="eyebrow">Sistema Financeiro Pessoal</p>
+          <h1>Seu portal financeiro, agora com importacao OFX.</h1>
+          <p class="lede">Entre com sua conta do Supabase Auth para consultar transacoes, importar extratos e acompanhar o historico de ingestao.</p>
         </div>
-        <button id="btnSair" class="btn-secundario" type="button">Sair</button>
-      </div>
 
-      <div class="botoes" id="viewButtons">
-        <button type="button" data-view="banco">Banco</button>
-        <button type="button" data-view="base">Base</button>
-        <button type="button" data-view="recorrentes">Recorrentes</button>
-        <button type="button" data-view="fornecedores">Fornecedores</button>
-        <button type="button" data-view="duplicadas">Duplicadas</button>
-      </div>
+        <form id="loginForm" class="form-grid" novalidate>
+          <label for="usuario">Email</label>
+          <input type="email" id="usuario" name="usuario" placeholder="voce@exemplo.com" autocomplete="username" required>
 
-      <p id="dashboardMsg" class="mensagem" aria-live="polite"></p>
-      <div id="resultado" class="resultado"></div>
-    </section>
+          <label for="senha">Senha</label>
+          <input type="password" id="senha" name="senha" placeholder="Sua senha" autocomplete="current-password" required>
+
+          <button type="submit" id="loginButton" class="btn btn-primary">Entrar</button>
+        </form>
+
+        <div class="auth-actions">
+          <button type="button" id="showForgotPassword" class="btn btn-ghost">Esqueci minha senha</button>
+        </div>
+        <p id="msg" class="message" aria-live="polite"></p>
+      </section>
+
+      <section id="forgotPassword" class="panel auth-panel hidden">
+        <div class="brand-block">
+          <p class="eyebrow">Recuperacao de acesso</p>
+          <h1>Solicite um novo link seguro.</h1>
+          <p class="lede">Use o e-mail cadastrado para receber a redefinicao de senha diretamente pelo Supabase Auth.</p>
+        </div>
+
+        <form id="forgotPasswordForm" class="form-grid" novalidate>
+          <label for="recoveryEmail">Email</label>
+          <input type="email" id="recoveryEmail" name="recoveryEmail" placeholder="voce@exemplo.com" autocomplete="email" required>
+
+          <button type="submit" id="forgotPasswordButton" class="btn btn-primary">Enviar link</button>
+        </form>
+
+        <div class="auth-actions">
+          <button type="button" id="backToLoginFromForgot" class="btn btn-ghost">Voltar ao login</button>
+        </div>
+        <p id="forgotPasswordMsg" class="message" aria-live="polite"></p>
+      </section>
+
+      <section id="resetPassword" class="panel auth-panel hidden">
+        <div class="brand-block">
+          <p class="eyebrow">Definir nova senha</p>
+          <h1>Finalize o acesso com seguranca.</h1>
+          <p id="resetPasswordSubtitle" class="lede">Use o link recebido por e-mail para definir sua nova senha.</p>
+        </div>
+
+        <form id="resetPasswordForm" class="form-grid" novalidate>
+          <label for="newPassword">Nova senha</label>
+          <input type="password" id="newPassword" name="newPassword" placeholder="No minimo 8 caracteres" autocomplete="new-password" required>
+
+          <label for="confirmPassword">Confirmar nova senha</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repita a nova senha" autocomplete="new-password" required>
+
+          <button type="submit" id="resetPasswordButton" class="btn btn-primary">Salvar nova senha</button>
+        </form>
+
+        <div class="auth-actions">
+          <button type="button" id="backToLoginFromReset" class="btn btn-ghost">Voltar ao login</button>
+        </div>
+        <p id="resetPasswordMsg" class="message" aria-live="polite"></p>
+      </section>
+    </main>
+
+    <div id="appShell" class="app-shell hidden">
+      <header class="topbar panel">
+        <div class="topbar-main">
+          <div>
+            <p class="eyebrow">Portal Financeiro</p>
+            <h1>Painel operacional</h1>
+          </div>
+          <button type="button" id="menuToggle" class="btn btn-ghost nav-toggle" aria-expanded="false" aria-controls="mainNav">Menu</button>
+        </div>
+        <div class="topbar-side">
+          <div class="user-chip">
+            <span class="user-chip-label">Sessao</span>
+            <strong id="sessionInfo">-</strong>
+          </div>
+          <button id="btnSair" class="btn btn-danger" type="button">Sair</button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside id="mainNav" class="sidebar panel">
+          <button type="button" class="nav-link is-active" data-section="overview">Visao geral</button>
+          <button type="button" class="nav-link" data-section="transactions">Transacoes</button>
+          <button type="button" class="nav-link" data-section="imports">Importar OFX</button>
+          <button type="button" class="nav-link" data-section="gmail">Gmail</button>
+          <button type="button" class="nav-link" data-section="recurring">Recorrentes</button>
+          <button type="button" class="nav-link" data-section="suppliers">Fornecedores</button>
+          <button type="button" class="nav-link" data-section="duplicates">Duplicadas</button>
+        </aside>
+
+        <main class="content">
+          <p id="dashboardMsg" class="message panel panel-message" aria-live="polite"></p>
+
+          <section id="section-overview" class="section-stack">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Resumo</p>
+                <h2>Visao geral do sistema</h2>
+              </div>
+              <p class="section-copy">Os indicadores abaixo sao recalculados com base nas views seguras e nas importacoes confirmadas do usuario autenticado.</p>
+            </div>
+
+            <div id="statsGrid" class="stats-grid"></div>
+
+            <div class="two-column">
+              <section class="panel">
+                <div class="section-head compact">
+                  <div>
+                    <p class="eyebrow">Ultimas transacoes</p>
+                    <h3>Movimentacoes recentes</h3>
+                  </div>
+                </div>
+                <div id="latestTransactions" class="list-region"></div>
+              </section>
+
+              <section class="panel">
+                <div class="section-head compact">
+                  <div>
+                    <p class="eyebrow">Instituicoes</p>
+                    <h3>Resumo por banco</h3>
+                  </div>
+                </div>
+                <div id="bankSummary" class="table-region"></div>
+              </section>
+            </div>
+          </section>
+
+          <section id="section-transactions" class="section-stack hidden">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Consulta</p>
+                <h2>Transacoes</h2>
+              </div>
+              <p class="section-copy">Leitura direta da view base publicada via backend autenticado.</p>
+            </div>
+            <div id="transactionsTable" class="panel table-region"></div>
+          </section>
+
+          <section id="section-imports" class="section-stack hidden">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Ingestao manual</p>
+                <h2>Importar extrato OFX</h2>
+              </div>
+              <p class="section-copy">Suporta inicialmente arquivos OFX de Nubank e Banco Inter, com preview, confirmacao e historico rastreavel.</p>
+            </div>
+
+            <div class="two-column import-grid">
+              <section class="panel">
+                <div class="section-head compact">
+                  <div>
+                    <p class="eyebrow">Preparacao</p>
+                    <h3>Conta de destino</h3>
+                  </div>
+                  <button type="button" id="refreshOptions" class="btn btn-secondary">Atualizar</button>
+                </div>
+
+                <div class="form-grid">
+                  <label for="institutionSelect">Instituicao</label>
+                  <select id="institutionSelect"></select>
+
+                  <label for="accountSelect">Conta financeira</label>
+                  <select id="accountSelect"></select>
+                </div>
+
+                <div class="inline-actions">
+                  <button type="button" id="toggleCreateAccount" class="btn btn-ghost">Criar nova conta</button>
+                </div>
+
+                <form id="createAccountForm" class="form-grid hidden" novalidate>
+                  <label for="createAccountName">Nome da conta</label>
+                  <input type="text" id="createAccountName" placeholder="Conta Nubank" maxlength="120" required>
+
+                  <label for="createAccountType">Tipo</label>
+                  <select id="createAccountType">
+                    <option value="checking">Conta corrente</option>
+                    <option value="payment">Conta de pagamento</option>
+                    <option value="savings">Poupanca</option>
+                    <option value="investment">Investimento</option>
+                    <option value="cash">Caixa</option>
+                    <option value="other">Outro</option>
+                  </select>
+
+                  <label for="createExternalIdentifier">Identificador externo</label>
+                  <input type="text" id="createExternalIdentifier" placeholder="ACCTID ou apelido externo" maxlength="120">
+
+                  <label for="createMaskedAccountNumber">Conta mascarada</label>
+                  <input type="text" id="createMaskedAccountNumber" placeholder="***1234" maxlength="40">
+
+                  <label for="createMaskedBranchNumber">Agencia mascarada</label>
+                  <input type="text" id="createMaskedBranchNumber" placeholder="***1" maxlength="20">
+
+                  <button type="submit" id="createAccountButton" class="btn btn-primary">Salvar conta</button>
+                </form>
+
+                <p id="importMsg" class="message" aria-live="polite"></p>
+              </section>
+
+              <section class="panel">
+                <div class="section-head compact">
+                  <div>
+                    <p class="eyebrow">Arquivo</p>
+                    <h3>Upload do OFX</h3>
+                  </div>
+                </div>
+
+                <label for="ofxFile" id="dropzone" class="dropzone" tabindex="0">
+                  <input type="file" id="ofxFile" accept=".ofx">
+                  <strong>Selecionar ou arrastar arquivo OFX</strong>
+                  <span>Tamanho maximo de 5 MB. Apenas um arquivo por operacao.</span>
+                </label>
+
+                <div id="selectedFileCard" class="file-card hidden"></div>
+
+                <div class="inline-actions">
+                  <button type="button" id="previewButton" class="btn btn-primary">Gerar preview</button>
+                  <button type="button" id="clearFileButton" class="btn btn-ghost">Limpar selecao</button>
+                </div>
+              </section>
+            </div>
+
+            <section class="panel">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">Preview</p>
+                  <h3>Revisar antes de confirmar</h3>
+                </div>
+                <button type="button" id="confirmImportButton" class="btn btn-primary" disabled>Confirmar importacao</button>
+              </div>
+              <div id="previewPanel" class="preview-region empty-panel">Nenhum preview gerado ainda.</div>
+            </section>
+
+            <section class="panel">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">Historico</p>
+                  <h3>Importacoes anteriores</h3>
+                </div>
+                <button type="button" id="refreshHistoryButton" class="btn btn-secondary">Atualizar historico</button>
+              </div>
+              <div id="importsHistory" class="table-region"></div>
+            </section>
+          </section>
+
+          <section id="section-recurring" class="section-stack hidden">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Analise</p>
+                <h2>Recorrentes</h2>
+              </div>
+              <p class="section-copy">View analitica atual para recorrencia, preservada e apenas redesenhada.</p>
+            </div>
+            <div id="recurringTable" class="panel table-region"></div>
+          </section>
+
+          <section id="section-gmail" class="section-stack hidden">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Captura assistida</p>
+                <h2>Gmail e anexos OFX</h2>
+              </div>
+              <p class="section-copy">Conecte o Gmail autorizado, escolha as contas de destino para Nubank e Inter e rode a busca manual. Os anexos validos entram como pendentes de confirmacao.</p>
+            </div>
+
+            <div class="two-column import-grid">
+              <section class="panel">
+                <div class="section-head compact">
+                  <div>
+                    <p class="eyebrow">OAuth Google</p>
+                    <h3>Status da integracao</h3>
+                  </div>
+                </div>
+
+                <div id="gmailStatusCard" class="preview-region empty-panel">Carregue o status da integracao Gmail.</div>
+                <p id="gmailMsg" class="message" aria-live="polite"></p>
+
+                <div class="inline-actions">
+                  <button type="button" id="gmailConnectButton" class="btn btn-primary">Conectar Gmail</button>
+                  <button type="button" id="gmailDisconnectButton" class="btn btn-ghost">Desconectar</button>
+                  <button type="button" id="gmailRefreshButton" class="btn btn-secondary">Atualizar status</button>
+                </div>
+              </section>
+
+              <section class="panel">
+                <div class="section-head compact">
+                  <div>
+                    <p class="eyebrow">Mapeamento</p>
+                    <h3>Contas por instituicao</h3>
+                  </div>
+                </div>
+
+                <div class="form-grid">
+                  <label for="gmailNubankAccount">Conta Nubank</label>
+                  <select id="gmailNubankAccount"></select>
+
+                  <label for="gmailInterAccount">Conta Inter</label>
+                  <select id="gmailInterAccount"></select>
+                </div>
+
+                <div class="inline-actions">
+                  <button type="button" id="gmailSyncButton" class="btn btn-primary">Buscar agora</button>
+                </div>
+              </section>
+            </div>
+
+            <section class="panel">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">Anexos localizados</p>
+                  <h3>Historico Gmail</h3>
+                </div>
+              </div>
+              <div id="gmailMessagesTable" class="table-region"></div>
+            </section>
+          </section>
+
+          <section id="section-suppliers" class="section-stack hidden">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Analise</p>
+                <h2>Fornecedores</h2>
+              </div>
+              <p class="section-copy">Visao segura por fornecedor a partir das transacoes consolidadas.</p>
+            </div>
+            <div id="suppliersTable" class="panel table-region"></div>
+          </section>
+
+          <section id="section-duplicates" class="section-stack hidden">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Analise</p>
+                <h2>Duplicadas</h2>
+              </div>
+              <p class="section-copy">Acompanhamento das duplicidades sinalizadas no modelo canonico atual.</p>
+            </div>
+            <div id="duplicatesTable" class="panel table-region"></div>
+          </section>
+        </main>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="app.js"></script>
