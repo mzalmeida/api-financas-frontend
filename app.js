@@ -9,6 +9,7 @@ const LOCAL_BACKEND_URL = "http://127.0.0.1:3000";
 const SUPABASE_URL = "https://gbnzacdsxsivwwsquxky.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdibnphY2RzeHNpdnd3c3F1eGt5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1OTEwOTgsImV4cCI6MjEwMTE2NzA5OH0.hGoMQxS8eKIjyEytuaGAxI0TjkFT5OZp5coiUEbr_U8";
 const PASSWORD_MIN_LENGTH = 8;
+const GMAIL_FEATURE_ENABLED = false;
 
 function resolveApiUrl() {
   const { hostname } = window.location;
@@ -183,12 +184,15 @@ function isExpired(session) {
 }
 
 function setMessage(target, message, type = "info") {
+  if (!target) return;
   target.textContent = message || "";
   target.dataset.state = message ? type : "";
 }
 
 function clearMessages() {
-  [elements.loginMessage, elements.forgotPasswordMessage, elements.resetPasswordMessage, elements.dashboardMessage, elements.importMessage, elements.gmailMessage].forEach((element) => setMessage(element, ""));
+  [elements.loginMessage, elements.forgotPasswordMessage, elements.resetPasswordMessage, elements.dashboardMessage, elements.importMessage, elements.gmailMessage]
+    .filter(Boolean)
+    .forEach((element) => setMessage(element, ""));
 }
 
 function setLoading(button, isLoading, loadingText = "Carregando...") {
@@ -734,6 +738,16 @@ async function loadImportsHistory() {
 }
 
 async function loadGmailStatus() {
+  if (!GMAIL_FEATURE_ENABLED) {
+    state.gmail = {
+      integration: null,
+      accounts: [],
+      institutions: [],
+      messages: [],
+    };
+    return;
+  }
+
   const { response, payload } = await apiFetch("/integrations/gmail/status");
   if (!response.ok) {
     throw new Error(payload?.erro || "Falha ao consultar o status do Gmail.");
@@ -768,7 +782,7 @@ async function loadSectionData(sectionName) {
     return;
   }
 
-  if (sectionName === "gmail") {
+  if (sectionName === "gmail" && GMAIL_FEATURE_ENABLED) {
     await Promise.all([loadOptions(), loadGmailStatus()]);
     return;
   }
@@ -787,6 +801,7 @@ async function loadSectionData(sectionName) {
 function setActiveSection(sectionName) {
   state.activeSection = sectionName;
   Object.entries(elements.sections).forEach(([key, element]) => {
+    if (!element) return;
     element.classList.toggle("hidden", key !== sectionName);
   });
   elements.navLinks.forEach((button) => button.classList.toggle("is-active", button.dataset.section === sectionName));
@@ -1360,26 +1375,28 @@ function registerEventHandlers() {
     }
   });
   elements.importsHistory.addEventListener("click", handleHistoryAction);
-  elements.gmailConnectButton.addEventListener("click", handleGmailConnect);
-  elements.gmailDisconnectButton.addEventListener("click", handleGmailDisconnect);
-  elements.gmailSyncButton.addEventListener("click", handleGmailSync);
-  elements.gmailRefreshButton.addEventListener("click", async () => {
-    setLoading(elements.gmailRefreshButton, true, "Atualizando...");
-    try {
-      await Promise.all([loadOptions(), loadGmailStatus()]);
-      setMessage(elements.gmailMessage, "Status Gmail atualizado.", "success");
-    } catch (error) {
-      setMessage(elements.gmailMessage, error.message || "Falha ao atualizar o status Gmail.", "error");
-    } finally {
-      setLoading(elements.gmailRefreshButton, false);
-    }
-  });
+  if (GMAIL_FEATURE_ENABLED && elements.gmailConnectButton && elements.gmailDisconnectButton && elements.gmailSyncButton && elements.gmailRefreshButton) {
+    elements.gmailConnectButton.addEventListener("click", handleGmailConnect);
+    elements.gmailDisconnectButton.addEventListener("click", handleGmailDisconnect);
+    elements.gmailSyncButton.addEventListener("click", handleGmailSync);
+    elements.gmailRefreshButton.addEventListener("click", async () => {
+      setLoading(elements.gmailRefreshButton, true, "Atualizando...");
+      try {
+        await Promise.all([loadOptions(), loadGmailStatus()]);
+        setMessage(elements.gmailMessage, "Status Gmail atualizado.", "success");
+      } catch (error) {
+        setMessage(elements.gmailMessage, error.message || "Falha ao atualizar o status Gmail.", "error");
+      } finally {
+        setLoading(elements.gmailRefreshButton, false);
+      }
+    });
+  }
 }
 
 async function bootstrap() {
   registerEventHandlers();
 
-  if (initialGmailOauthStatus) {
+  if (GMAIL_FEATURE_ENABLED && initialGmailOauthStatus) {
     history.replaceState(null, "", window.location.pathname);
   }
 
@@ -1416,9 +1433,9 @@ async function bootstrap() {
     return;
   }
 
-  if (initialGmailOauthStatus === "connected") {
+  if (GMAIL_FEATURE_ENABLED && initialGmailOauthStatus === "connected") {
     setMessage(elements.dashboardMessage, "Gmail conectado com sucesso. Abra a aba Gmail para sincronizar anexos.", "success");
-  } else if (initialGmailOauthStatus === "error") {
+  } else if (GMAIL_FEATURE_ENABLED && initialGmailOauthStatus === "error") {
     setMessage(elements.dashboardMessage, "A conexao Gmail nao foi concluida.", "error");
   }
 

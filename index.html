@@ -99,7 +99,6 @@
           <button type="button" class="nav-link is-active" data-section="overview">Visao geral</button>
           <button type="button" class="nav-link" data-section="transactions">Transacoes</button>
           <button type="button" class="nav-link" data-section="imports">Importar OFX</button>
-          <button type="button" class="nav-link" data-section="gmail">Gmail</button>
           <button type="button" class="nav-link" data-section="recurring">Recorrentes</button>
           <button type="button" class="nav-link" data-section="suppliers">Fornecedores</button>
           <button type="button" class="nav-link" data-section="duplicates">Duplicadas</button>
@@ -161,6 +160,16 @@
               </div>
               <p class="section-copy">Suporta inicialmente arquivos OFX de Nubank e Banco Inter, com preview, confirmacao e historico rastreavel.</p>
             </div>
+
+            <section class="panel">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">Fluxo oficial</p>
+                  <h3>Upload manual homologado</h3>
+                </div>
+              </div>
+              <p class="section-copy">Automacao por e-mail planejada para uma versao futura. Nesta etapa, o fluxo oficial e: importar OFX, revisar o preview, confirmar e acompanhar o historico.</p>
+            </section>
 
             <div class="two-column import-grid">
               <section class="panel">
@@ -268,67 +277,6 @@
               <p class="section-copy">View analitica atual para recorrencia, preservada e apenas redesenhada.</p>
             </div>
             <div id="recurringTable" class="panel table-region"></div>
-          </section>
-
-          <section id="section-gmail" class="section-stack hidden">
-            <div class="section-head">
-              <div>
-                <p class="eyebrow">Captura assistida</p>
-                <h2>Gmail e anexos OFX</h2>
-              </div>
-              <p class="section-copy">Conecte o Gmail autorizado, escolha as contas de destino para Nubank e Inter e rode a busca manual. Os anexos validos entram como pendentes de confirmacao.</p>
-            </div>
-
-            <div class="two-column import-grid">
-              <section class="panel">
-                <div class="section-head compact">
-                  <div>
-                    <p class="eyebrow">OAuth Google</p>
-                    <h3>Status da integracao</h3>
-                  </div>
-                </div>
-
-                <div id="gmailStatusCard" class="preview-region empty-panel">Carregue o status da integracao Gmail.</div>
-                <p id="gmailMsg" class="message" aria-live="polite"></p>
-
-                <div class="inline-actions">
-                  <button type="button" id="gmailConnectButton" class="btn btn-primary">Conectar Gmail</button>
-                  <button type="button" id="gmailDisconnectButton" class="btn btn-ghost">Desconectar</button>
-                  <button type="button" id="gmailRefreshButton" class="btn btn-secondary">Atualizar status</button>
-                </div>
-              </section>
-
-              <section class="panel">
-                <div class="section-head compact">
-                  <div>
-                    <p class="eyebrow">Mapeamento</p>
-                    <h3>Contas por instituicao</h3>
-                  </div>
-                </div>
-
-                <div class="form-grid">
-                  <label for="gmailNubankAccount">Conta Nubank</label>
-                  <select id="gmailNubankAccount"></select>
-
-                  <label for="gmailInterAccount">Conta Inter</label>
-                  <select id="gmailInterAccount"></select>
-                </div>
-
-                <div class="inline-actions">
-                  <button type="button" id="gmailSyncButton" class="btn btn-primary">Buscar agora</button>
-                </div>
-              </section>
-            </div>
-
-            <section class="panel">
-              <div class="section-head compact">
-                <div>
-                  <p class="eyebrow">Anexos localizados</p>
-                  <h3>Historico Gmail</h3>
-                </div>
-              </div>
-              <div id="gmailMessagesTable" class="table-region"></div>
-            </section>
           </section>
 
           <section id="section-suppliers" class="section-stack hidden">

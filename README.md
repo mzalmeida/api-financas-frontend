@@ -59,3 +59,6 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - a navegacao continua em HTML, CSS e JavaScript puro, sem framework adicional;
 - o fluxo de recuperacao de senha publicado foi preservado com `redirectTo` apontando somente para `https://api-financas-frontend.onrender.com`;
 - o frontend continua sem `service_role` e sem uso de `innerHTML` para dados retornados pela API funcional.
+- a aba Gmail foi ocultada do portal publicado para nao expor uma funcionalidade ainda nao ativada;
+- o portal passa a destacar o fluxo oficial atual: upload manual de OFX, preview, confirmacao e historico;
+- qualquer automacao por e-mail fica registrada apenas como capacidade futura, sem botoes quebrados e sem dependencia de Google OAuth nesta etapa.
