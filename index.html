@@ -3,7 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portal Financeiro 1.0</title>
+  <title>RebeccaCash</title>
+  <meta name="description" content="RebeccaCash e o seu software SaaS de controle financeiro pessoal com dashboard, importacoes OFX e operacao segura.">
+  <meta name="theme-color" content="#07090d">
+  <link rel="icon" type="image/x-icon" href="assets/brand/favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/brand/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -16,29 +23,35 @@
   <main id="authShell" class="auth-shell">
     <section id="login" class="auth-panel panel">
       <div class="auth-copy">
-        <p class="eyebrow">Release Candidate 1.0</p>
-        <h1>Portal Financeiro profissional, pronto para o seu dia a dia.</h1>
-        <p class="support-copy">Acompanhe saldo, importacoes OFX, historico, cadastros e indicadores reais em uma experiencia unica.</p>
+        <div class="brand-hero">
+          <img class="brand-logo auth-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="Logo RebeccaCash">
+        </div>
+        <p class="eyebrow">RebeccaCash</p>
+        <h1>Inteligencia financeira com acabamento de software premium.</h1>
+        <p class="support-copy">Controle saldo, importacoes OFX, historico, cadastros e indicadores reais em uma experiencia sofisticada, segura e pronta para uso diario.</p>
         <div class="auth-highlights">
           <article class="highlight-card">
-            <strong>OFX homologado</strong>
+            <strong>Operacao homologada</strong>
             <span>Nubank e Banco Inter com preview, confirmacao, historico e deduplicacao.</span>
+          </article>
+          <article class="highlight-card">
+            <strong>Marca proprietaria</strong>
+            <span>RebeccaCash agora centraliza identidade visual, autenticacao segura e uma presenca mais comercial em toda a experiencia.</span>
           </article>
           <article class="highlight-card">
             <strong>Painel seguro</strong>
             <span>Autenticacao Supabase, sessao persistida e segregacao real de dados por usuario.</span>
-          </article>
-          <article class="highlight-card">
-            <strong>Fluxo oficial</strong>
-            <span>Upload manual de OFX com confirmacao elegante e rastreabilidade completa.</span>
           </article>
         </div>
       </div>
 
       <div class="auth-card panel">
         <div class="auth-card-head">
+          <div class="brand-inline">
+            <img class="brand-logo compact-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="RebeccaCash">
+          </div>
           <p class="eyebrow">Acesso</p>
-          <h2>Entrar no portal</h2>
+          <h2>Entrar no RebeccaCash</h2>
         </div>
 
         <form id="loginForm" class="form-grid" novalidate>
@@ -60,7 +73,8 @@
 
     <section id="forgotPassword" class="auth-panel panel hidden">
       <div class="auth-copy narrow">
-        <p class="eyebrow">Recuperacao</p>
+        <img class="brand-logo auth-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="Logo RebeccaCash">
+        <p class="eyebrow">RebeccaCash</p>
         <h1>Solicite um novo link seguro.</h1>
         <p class="support-copy">O e-mail sera enviado pelo Supabase Auth para o endereco cadastrado.</p>
       </div>
@@ -87,7 +101,8 @@
 
     <section id="resetPassword" class="auth-panel panel hidden">
       <div class="auth-copy narrow">
-        <p class="eyebrow">Nova senha</p>
+        <img class="brand-logo auth-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="Logo RebeccaCash">
+        <p class="eyebrow">RebeccaCash</p>
         <h1>Finalize sua entrada com seguranca.</h1>
         <p id="resetPasswordSubtitle" class="support-copy">Use o link recebido por e-mail para definir sua nova senha.</p>
       </div>
@@ -119,9 +134,9 @@
   <div id="appShell" class="app-shell hidden">
     <aside id="sidebar" class="sidebar">
       <div class="brand-mark">
-        <div class="brand-badge">PF</div>
+        <img class="brand-logo sidebar-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="RebeccaCash">
         <div>
-          <p class="eyebrow">Portal Financeiro</p>
+          <p class="eyebrow">RebeccaCash</p>
           <strong>Versao 1.0</strong>
         </div>
       </div>
@@ -149,8 +164,9 @@
       <header class="topbar panel">
         <div class="topbar-main">
           <button type="button" id="menuToggle" class="btn btn-ghost nav-toggle" aria-expanded="false" aria-controls="sidebar">Menu</button>
+          <img class="brand-logo header-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="RebeccaCash">
           <div>
-            <p class="eyebrow">Operacao financeira</p>
+            <p class="eyebrow">RebeccaCash</p>
             <h2 id="pageTitle">Dashboard</h2>
           </div>
         </div>
@@ -187,7 +203,7 @@
                   <h3>Upload manual permanece como fluxo oficial</h3>
                 </div>
               </div>
-              <p class="section-copy">Integracao por e-mail foi adiada oficialmente. Esta versao 1.0 foi refinada para entregar uma experiencia profissional sem dependencias externas adicionais.</p>
+              <p class="section-copy">Integracao por e-mail foi adiada oficialmente. Esta versao 1.0 do RebeccaCash foi refinada para entregar uma experiencia profissional sem dependencias externas adicionais.</p>
             </article>
           </div>
 
@@ -272,7 +288,7 @@
 
             <article class="panel">
               <div class="feature-head">
-                <span class="status-badge neutral">Versao 1.0</span>
+                <span class="status-badge neutral">RebeccaCash 1.0</span>
               </div>
               <h4>Confirmacao com rastreabilidade</h4>
               <p class="section-copy">Preview persistido, deduplicacao, idempotencia, historico e dashboard atualizados apos a confirmacao da importacao.</p>
@@ -519,9 +535,9 @@
 
                 <label for="themePreference">Tema visual</label>
                 <select id="themePreference">
-                  <option value="olive">Olive</option>
-                  <option value="slate">Slate</option>
-                  <option value="sand">Sand</option>
+                  <option value="olive">Midnight Graphite</option>
+                  <option value="slate">Silver Mist</option>
+                  <option value="sand">Champagne Glow</option>
                 </select>
 
                 <label class="switch-row" for="compactCards">
@@ -548,6 +564,46 @@
               <div id="table-institutions" class="data-region"></div>
             </article>
           </div>
+
+          <article class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Integracoes</p>
+                <h3>Gmail OAuth</h3>
+              </div>
+              <div class="toolbar-inline">
+                <button type="button" id="gmailRefreshButton" class="btn btn-ghost">Atualizar status</button>
+                <button type="button" id="gmailConnectButton" class="btn btn-primary">Conectar Gmail</button>
+                <button type="button" id="gmailSyncButton" class="btn btn-secondary">Buscar agora</button>
+                <button type="button" id="gmailDisconnectButton" class="btn btn-ghost">Desconectar</button>
+              </div>
+            </div>
+
+            <div id="gmailStatusCard" class="feature-grid">
+              <article class="summary-card">
+                <span class="status-badge neutral">Status: aguardando</span>
+                <strong>Nenhuma conexao carregada</strong>
+                <span class="mini-copy">O RebeccaCash exibira aqui a conta mascarada, a ultima sincronizacao e o estado da integracao Gmail.</span>
+              </article>
+              <article class="summary-card">
+                <strong>Mapeamento de contas</strong>
+                <label for="gmailNubankAccount">Conta para Nubank</label>
+                <select id="gmailNubankAccount"></select>
+                <label for="gmailInterAccount">Conta para Banco Inter</label>
+                <select id="gmailInterAccount"></select>
+              </article>
+            </div>
+
+            <p id="gmailMessage" class="message" aria-live="polite"></p>
+
+            <div class="section-head compact">
+              <div>
+                <p class="eyebrow">Mensagens localizadas</p>
+                <h4>OFX em pending_confirmation</h4>
+              </div>
+            </div>
+            <div id="gmailMessagesTable" class="data-region"></div>
+          </article>
         </section>
 
         <section id="section-profile" class="section-stack hidden">

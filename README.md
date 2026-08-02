@@ -1,6 +1,6 @@
-# API Financas - Frontend
+# RebeccaCash - Frontend
 
-Frontend estatico em HTML, CSS e JavaScript puro para login, restauracao de sessao, dashboard, central de importacoes, CRUDs e configuracoes do portal.
+Frontend estatico em HTML, CSS e JavaScript puro do RebeccaCash para login, restauracao de sessao, dashboard, central de importacoes, CRUDs e configuracoes do portal.
 
 ## Estado da F03-E02
 
@@ -65,6 +65,7 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 
 ## Estado local da RC 1.0
 
+- o sistema passou a adotar oficialmente a marca `RebeccaCash`, com logo, favicon, manifest e identidade visual centralizada no frontend;
 - o portal agora opera com menu lateral funcional para:
   - Dashboard
   - Importacoes
@@ -81,4 +82,17 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - os cadastros passaram a usar CRUD real sobre os endpoints `/portal/catalog/*`;
 - configuracoes e perfil deixaram de ser placeholders e passaram a persistir nome, tema e preferencias reais do usuario;
 - a troca de senha passou a poder ser iniciada de dentro do proprio portal, usando a sessao autenticada do Supabase no navegador;
-- a identidade visual foi refeita com layout premium, sidebar mobile, cards, graficos em CSS e toasts.
+- a identidade visual foi refeita com layout premium, sidebar mobile, cards, graficos em CSS, toasts e paleta inspirada no logotipo oficial do RebeccaCash.
+
+## Estado local da F04-E01-R2
+
+- a marca comercial oficial RebeccaCash passou a aparecer no `title`, no login, na sidebar, no cabecalho, no manifest e nos favicons do frontend;
+- o frontend voltou a expor a integracao Gmail dentro de `Configuracoes`, sem reabrir a interface antiga quebrada;
+- a nova area Gmail exibe:
+  - status conectado/desconectado;
+  - conta mascarada;
+  - mapeamento de conta para Nubank e Banco Inter;
+  - botoes `Conectar Gmail`, `Buscar agora`, `Desconectar` e `Atualizar status`;
+  - lista de mensagens/importacoes localizadas para revisao;
+- o callback OAuth do Gmail voltou a gerar feedback visual seguro no RebeccaCash;
+- a responsividade do menu e das barras de acao foi endurecida para reduzir quebra de texto, compressao de labels e overflow horizontal.

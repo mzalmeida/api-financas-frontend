@@ -1,8 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const STORAGE_KEY = "portal-financeiro.session";
-const RECOVERY_CONTEXT_KEY = "portal-financeiro.recovery";
-const SUPABASE_RECOVERY_STORAGE_KEY = "portal-financeiro.supabase.recovery";
+const APP_NAME = "RebeccaCash";
+const STORAGE_KEY = "rebeccacash.session";
+const RECOVERY_CONTEXT_KEY = "rebeccacash.recovery";
+const SUPABASE_RECOVERY_STORAGE_KEY = "rebeccacash.supabase.recovery";
 const PUBLIC_BACKEND_URL = "https://api-financas-backend1.onrender.com";
 const PUBLIC_FRONTEND_URL = "https://api-financas-frontend.onrender.com";
 const LOCAL_BACKEND_URL = "http://127.0.0.1:3000";
@@ -145,9 +146,11 @@ function resolveRecoveryRedirectUrl() {
 const API_URL = resolveApiUrl();
 const RECOVERY_REDIRECT_URL = resolveRecoveryRedirectUrl();
 const initialAuthParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+const initialPageParams = new URLSearchParams(window.location.search);
 const initialAuthLinkType = initialAuthParams.get("type");
 const initialAuthErrorCode = initialAuthParams.get("error_code");
 const initialAuthErrorDescription = initialAuthParams.get("error_description");
+const initialGmailOauthStatus = initialPageParams.get("gmail_oauth");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -232,6 +235,15 @@ const elements = {
   compactCards: document.getElementById("compactCards"),
   saveSettingsButton: document.getElementById("saveSettingsButton"),
   settingsMessage: document.getElementById("settingsMessage"),
+  gmailMessage: document.getElementById("gmailMessage"),
+  gmailStatusCard: document.getElementById("gmailStatusCard"),
+  gmailConnectButton: document.getElementById("gmailConnectButton"),
+  gmailDisconnectButton: document.getElementById("gmailDisconnectButton"),
+  gmailSyncButton: document.getElementById("gmailSyncButton"),
+  gmailRefreshButton: document.getElementById("gmailRefreshButton"),
+  gmailNubankAccount: document.getElementById("gmailNubankAccount"),
+  gmailInterAccount: document.getElementById("gmailInterAccount"),
+  gmailMessagesTable: document.getElementById("gmailMessagesTable"),
   profileForm: document.getElementById("profileForm"),
   profileDisplayName: document.getElementById("profileDisplayName"),
   profileEmail: document.getElementById("profileEmail"),
@@ -272,6 +284,13 @@ const state = {
   overview: null,
   profile: null,
   options: { institutions: [], accounts: [] },
+  gmail: {
+    integration: null,
+    accounts: [],
+    institutions: [],
+    messages: [],
+    available: true,
+  },
   history: [],
   historyPage: 1,
   selectedImportDetails: null,
@@ -375,11 +394,19 @@ function clearAuthRedirectFromUrl() {
   }
 }
 
+function clearGmailOauthStatusFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  params.delete("gmail_oauth");
+  const query = params.toString();
+  history.replaceState(null, "", `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`);
+}
+
 function hideAuthSections() {
   [elements.loginSection, elements.forgotPasswordSection, elements.resetPasswordSection].forEach((section) => section.classList.add("hidden"));
 }
 
 function showLogin(options = {}) {
+  document.title = APP_NAME;
   elements.authShell.classList.remove("hidden");
   elements.appShell.classList.add("hidden");
   hideAuthSections();
@@ -599,6 +626,33 @@ async function fetchHistory() {
   state.history = payload.imports ?? [];
 }
 
+async function fetchGmailStatus() {
+  const { response, payload } = await apiFetch("/integrations/gmail/status");
+
+  if (response.status === 404) {
+    state.gmail = {
+      integration: null,
+      accounts: [],
+      institutions: [],
+      messages: [],
+      available: false,
+    };
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.erro || "Falha ao carregar o status da integracao Gmail.");
+  }
+
+  state.gmail = {
+    integration: payload.integration ?? null,
+    accounts: payload.accounts ?? [],
+    institutions: payload.institutions ?? [],
+    messages: payload.messages ?? [],
+    available: true,
+  };
+}
+
 async function fetchCatalog(entityName, page = null) {
   const entityState = state.catalogs[entityName];
   if (page) {
@@ -762,6 +816,152 @@ function renderImportOptions() {
     option.dataset.institutionId = account.financial_institution_id ?? "";
     elements.accountSelect.appendChild(option);
   });
+}
+
+function renderGmailAccountOptions(selectElement, selectedValue = "") {
+  const placeholder = createNode("option", "", "Selecione uma conta");
+  placeholder.value = "";
+  selectElement.replaceChildren(placeholder);
+
+  (state.options.accounts || []).forEach((account) => {
+    const option = createNode("option", "", `${account.name} (${account.account_type})`);
+    option.value = account.id;
+    option.selected = account.id === selectedValue;
+    selectElement.appendChild(option);
+  });
+}
+
+function renderGmailStatus() {
+  renderGmailAccountOptions(
+    elements.gmailNubankAccount,
+    state.gmail.integration?.account_mapping?.nubank || "",
+  );
+  renderGmailAccountOptions(
+    elements.gmailInterAccount,
+    state.gmail.integration?.account_mapping?.inter || "",
+  );
+
+  elements.gmailStatusCard.replaceChildren();
+
+  if (!state.gmail.available) {
+    renderEmpty(
+      elements.gmailStatusCard,
+      "Integracao indisponivel",
+      "A feature Gmail nao esta publicada neste ambiente ou ainda nao foi ativada.",
+    );
+    elements.gmailConnectButton.disabled = true;
+    elements.gmailSyncButton.disabled = true;
+    elements.gmailDisconnectButton.disabled = true;
+    renderEmpty(
+      elements.gmailMessagesTable,
+      "Sem mensagens Gmail",
+      "Assim que a integracao estiver disponivel, os anexos OFX encontrados aparecerao aqui.",
+    );
+    return;
+  }
+
+  const integration = state.gmail.integration || {
+    connected: false,
+    gmail_email_masked: null,
+    account_mapping: {},
+    last_sync_status: "never",
+    last_sync_at: null,
+    last_sync_summary: {},
+  };
+
+  const statusCard = createNode("article", "summary-card");
+  statusCard.appendChild(createNode("span", "status-badge neutral", `Status: ${integration.connected ? "conectado" : "desconectado"}`));
+  statusCard.appendChild(createNode("strong", "", integration.gmail_email_masked || "Nenhuma conta conectada"));
+  statusCard.appendChild(createNode("span", "mini-copy", `Ultima sincronizacao: ${formatDateTime(integration.last_sync_at)}`));
+  statusCard.appendChild(createNode("span", "mini-copy", `Ultimo resultado: ${integration.last_sync_status || "never"}`));
+
+  const summaryCard = createNode("article", "summary-card");
+  summaryCard.appendChild(createNode("strong", "", "Mapeamento de contas"));
+
+  const nubankLabel = createNode("label", "", "Conta para Nubank");
+  summaryCard.appendChild(nubankLabel);
+  summaryCard.appendChild(elements.gmailNubankAccount);
+
+  const interLabel = createNode("label", "", "Conta para Banco Inter");
+  summaryCard.appendChild(interLabel);
+  summaryCard.appendChild(elements.gmailInterAccount);
+
+  const syncSummary = integration.last_sync_summary || {};
+  summaryCard.appendChild(createNode("span", "mini-copy", `Mensagens buscadas: ${syncSummary.searched_messages ?? 0}`));
+  summaryCard.appendChild(createNode("span", "mini-copy", `Anexos OFX: ${syncSummary.attachments_found ?? 0}`));
+  summaryCard.appendChild(createNode("span", "mini-copy", `Imports criados: ${syncSummary.imports_created ?? 0}`));
+
+  elements.gmailStatusCard.append(statusCard, summaryCard);
+  elements.gmailConnectButton.disabled = false;
+  elements.gmailSyncButton.disabled = !integration.connected;
+  elements.gmailDisconnectButton.disabled = !integration.connected;
+
+  renderGmailMessages();
+}
+
+function renderGmailMessages() {
+  const rows = state.gmail.messages || [];
+
+  if (!rows.length) {
+    renderEmpty(
+      elements.gmailMessagesTable,
+      "Nenhuma mensagem localizada",
+      "Conecte o Gmail e execute uma busca manual para listar anexos OFX com pending_confirmation.",
+    );
+    return;
+  }
+
+  const wrapper = createNode("div", "table-wrap");
+  const table = document.createElement("table");
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>Conta</th>
+        <th>Arquivo</th>
+        <th>Banco</th>
+        <th>Recebido em</th>
+        <th>Acao</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  `;
+
+  const tbody = table.querySelector("tbody");
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+
+    const statusCell = document.createElement("td");
+    statusCell.innerHTML = badge(row.status || "desconhecido", row.status === "pending_confirmation" ? "success" : row.status === "failed" ? "danger" : "neutral");
+
+    const accountCell = document.createElement("td");
+    accountCell.textContent = row.sender_email_masked || "-";
+
+    const fileCell = document.createElement("td");
+    fileCell.textContent = row.file_name || "-";
+
+    const institutionCell = document.createElement("td");
+    institutionCell.textContent = row.institution_slug || "-";
+
+    const receivedCell = document.createElement("td");
+    receivedCell.textContent = formatDateTime(row.received_at);
+
+    const actionCell = document.createElement("td");
+    if (row.import_id) {
+      const button = createNode("button", "btn btn-ghost gmail-review-action", "Revisar importacao");
+      button.type = "button";
+      button.dataset.importId = row.import_id;
+      actionCell.appendChild(button);
+    } else {
+      actionCell.textContent = "Sem import";
+    }
+
+    tr.append(statusCell, accountCell, fileCell, institutionCell, receivedCell, actionCell);
+    tbody.appendChild(tr);
+  });
+
+  wrapper.appendChild(table);
+  elements.gmailMessagesTable.replaceChildren(wrapper);
 }
 
 function renderSelectedFile() {
@@ -1361,9 +1561,10 @@ async function loadSection(sectionName) {
   }
 
   if (sectionName === "settings") {
-    await Promise.all([fetchProfile(), fetchCatalog("institutions", 1)]);
+    await Promise.all([fetchProfile(), fetchCatalog("institutions", 1), fetchImportOptions(), fetchGmailStatus()]);
     syncSettingsForm();
     renderCatalog("institutions");
+    renderGmailStatus();
     return;
   }
 
@@ -1391,6 +1592,7 @@ function setActiveSection(sectionName) {
   });
   elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.section === sectionName));
   elements.pageTitle.textContent = SECTION_TITLES[sectionName];
+  document.title = `${APP_NAME} - ${SECTION_TITLES[sectionName]}`;
   elements.sidebar.classList.remove("is-open");
   elements.menuToggle.setAttribute("aria-expanded", "false");
 }
@@ -1411,6 +1613,10 @@ async function refreshAllData() {
     renderHistory();
     syncSettingsForm();
     syncProfileForm();
+    if (state.activeSection === "settings") {
+      await fetchGmailStatus();
+      renderGmailStatus();
+    }
   } catch (error) {
     setMessage(elements.globalMessage, error.message || "Falha ao atualizar os dados do portal.", "error");
   }
@@ -1696,6 +1902,108 @@ async function handleSavePassword(event) {
   }
 }
 
+async function handleGmailConnect() {
+  setLoading(elements.gmailConnectButton, true, "Conectando...");
+  setMessage(elements.gmailMessage, "");
+
+  try {
+    const { response, payload } = await apiFetch("/integrations/gmail/connect");
+    if (!response.ok || !payload?.authorization_url) {
+      setMessage(elements.gmailMessage, payload?.erro || "Falha ao iniciar a conexao com o Gmail.", "error");
+      return;
+    }
+
+    window.location.assign(payload.authorization_url);
+  } catch (error) {
+    setMessage(elements.gmailMessage, error.message || "Falha ao iniciar a conexao com o Gmail.", "error");
+  } finally {
+    setLoading(elements.gmailConnectButton, false);
+  }
+}
+
+async function handleGmailDisconnect() {
+  setLoading(elements.gmailDisconnectButton, true, "Desconectando...");
+  setMessage(elements.gmailMessage, "");
+
+  try {
+    const { response, payload } = await apiFetch("/integrations/gmail/disconnect", {
+      method: "POST",
+    });
+    if (!response.ok) {
+      setMessage(elements.gmailMessage, payload?.erro || "Falha ao desconectar a integracao Gmail.", "error");
+      return;
+    }
+
+    await fetchGmailStatus();
+    renderGmailStatus();
+    setMessage(elements.gmailMessage, "Integracao Gmail desconectada com sucesso.", "success");
+    showToast("Gmail desconectado.", "info");
+  } catch (error) {
+    setMessage(elements.gmailMessage, error.message || "Falha ao desconectar a integracao Gmail.", "error");
+  } finally {
+    setLoading(elements.gmailDisconnectButton, false);
+  }
+}
+
+async function handleGmailSync() {
+  setLoading(elements.gmailSyncButton, true, "Buscando...");
+  setMessage(elements.gmailMessage, "");
+
+  try {
+    const { response, payload } = await apiFetch("/integrations/gmail/sync", {
+      method: "POST",
+      body: {
+        accountMappings: {
+          nubank: elements.gmailNubankAccount.value || null,
+          inter: elements.gmailInterAccount.value || null,
+        },
+      },
+    });
+
+    if (!response.ok) {
+      setMessage(elements.gmailMessage, payload?.erro || "Falha ao executar a busca manual no Gmail.", "error");
+      return;
+    }
+
+    await Promise.all([fetchGmailStatus(), fetchHistory(), fetchOverview()]);
+    renderGmailStatus();
+    renderHistory();
+    renderDashboard();
+    setMessage(elements.gmailMessage, "Busca manual concluida com sucesso.", "success");
+    showToast("Busca manual do Gmail concluida.", "success");
+  } catch (error) {
+    setMessage(elements.gmailMessage, error.message || "Falha ao executar a busca manual no Gmail.", "error");
+  } finally {
+    setLoading(elements.gmailSyncButton, false);
+  }
+}
+
+async function handleGmailRefresh() {
+  setLoading(elements.gmailRefreshButton, true, "Atualizando...");
+  setMessage(elements.gmailMessage, "");
+
+  try {
+    await Promise.all([fetchImportOptions(), fetchGmailStatus()]);
+    renderGmailStatus();
+    showToast("Status do Gmail atualizado.", "info");
+  } catch (error) {
+    setMessage(elements.gmailMessage, error.message || "Falha ao atualizar a integracao Gmail.", "error");
+  } finally {
+    setLoading(elements.gmailRefreshButton, false);
+  }
+}
+
+async function handleGmailReviewAction(event) {
+  const button = event.target.closest(".gmail-review-action");
+  if (!button?.dataset.importId) return;
+
+  setActiveSection("history");
+  await fetchHistory();
+  renderHistory();
+  await loadHistoryDetails(button.dataset.importId);
+  showToast("Importacao Gmail aberta para revisao.", "info");
+}
+
 function registerEventHandlers() {
   elements.loginForm.addEventListener("submit", handleLogin);
   elements.showForgotPasswordButton.addEventListener("click", showForgotPassword);
@@ -1840,6 +2148,11 @@ function registerEventHandlers() {
   });
 
   elements.settingsForm.addEventListener("submit", handleSaveSettings);
+  elements.gmailConnectButton.addEventListener("click", handleGmailConnect);
+  elements.gmailDisconnectButton.addEventListener("click", handleGmailDisconnect);
+  elements.gmailSyncButton.addEventListener("click", handleGmailSync);
+  elements.gmailRefreshButton.addEventListener("click", handleGmailRefresh);
+  elements.gmailMessagesTable.addEventListener("click", handleGmailReviewAction);
   elements.profileForm.addEventListener("submit", handleSaveProfile);
   elements.passwordForm.addEventListener("submit", handleSavePassword);
   elements.themePreference.addEventListener("change", () => applyTheme(elements.themePreference.value));
@@ -1882,6 +2195,15 @@ async function bootstrap() {
   }
 
   await verifyStoredSession();
+
+  if (initialGmailOauthStatus) {
+    if (initialGmailOauthStatus === "connected") {
+      showToast("Gmail conectado com sucesso ao RebeccaCash.", "success");
+    } else {
+      showToast("A autorizacao do Gmail foi encerrada com aviso seguro.", "error");
+    }
+    clearGmailOauthStatusFromUrl();
+  }
 }
 
 bootstrap();
