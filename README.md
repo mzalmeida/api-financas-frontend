@@ -15,9 +15,17 @@ Frontend estatico em HTML, CSS e JavaScript puro para login, restauracao de sess
 ## API esperada
 
 - local: `http://127.0.0.1:3000`
-- publico: `https://api-financas-backend.onrender.com`
+- publico: `https://api-financas-backend1.onrender.com`
 
 O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL publica fora do ambiente local.
+
+## Estado publico da F03-E01-R1
+
+- URL publica validada: `https://api-financas-frontend.onrender.com`
+- backend publico validado: `https://api-financas-backend1.onrender.com`
+- commit corretivo de rollout: `984d237 - Point frontend to Render backend service`
+- o HTML publico nao exibe mais o campo `linkedin`
+- o fluxo publicado usa restauracao de sessao, refresh, logout e bearer token do Supabase
 
 ## Fluxo de sessao
 

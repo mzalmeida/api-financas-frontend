@@ -22,7 +22,47 @@
         <button type="submit" id="loginButton">Entrar</button>
       </form>
 
+      <button type="button" id="showForgotPassword" class="btn-link">Esqueci minha senha</button>
       <p id="msg" class="mensagem" aria-live="polite"></p>
+    </section>
+
+    <section id="forgotPassword" class="card hidden">
+      <h1>Recuperar senha</h1>
+      <p class="subtitulo">Informe seu e-mail para receber um link seguro de redefinicao.</p>
+
+      <form id="forgotPasswordForm" novalidate>
+        <label for="recoveryEmail">Email</label>
+        <input type="email" id="recoveryEmail" name="recoveryEmail" placeholder="voce@exemplo.com" autocomplete="email" required>
+
+        <button type="submit" id="forgotPasswordButton">Enviar link</button>
+      </form>
+
+      <div class="acoes-auxiliares">
+        <button type="button" id="backToLoginFromForgot" class="btn-link">Voltar ao login</button>
+      </div>
+
+      <p id="forgotPasswordMsg" class="mensagem" aria-live="polite"></p>
+    </section>
+
+    <section id="resetPassword" class="card hidden">
+      <h1>Definir nova senha</h1>
+      <p id="resetPasswordSubtitle" class="subtitulo">Use o link seguro recebido por e-mail para definir sua nova senha.</p>
+
+      <form id="resetPasswordForm" novalidate>
+        <label for="newPassword">Nova senha</label>
+        <input type="password" id="newPassword" name="newPassword" placeholder="No minimo 8 caracteres" autocomplete="new-password" required>
+
+        <label for="confirmPassword">Confirmar nova senha</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repita a nova senha" autocomplete="new-password" required>
+
+        <button type="submit" id="resetPasswordButton">Salvar nova senha</button>
+      </form>
+
+      <div class="acoes-auxiliares">
+        <button type="button" id="backToLoginFromReset" class="btn-link">Voltar ao login</button>
+      </div>
+
+      <p id="resetPasswordMsg" class="mensagem" aria-live="polite"></p>
     </section>
 
     <section id="dados" class="card hidden">
@@ -47,6 +87,6 @@
     </section>
   </div>
 
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
