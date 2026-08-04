@@ -139,7 +139,7 @@
       <div class="brand-mark">
         <img class="brand-logo sidebar-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="RebeccaCash">
         <div>
-          <p class="eyebrow">RebeccaCash</p>
+          <p class="eyebrow">Software financeiro pessoal</p>
           <strong>RebeccaCash</strong>
         </div>
       </div>
@@ -148,7 +148,7 @@
         <button type="button" class="nav-item is-active" data-section="dashboard">Dashboard</button>
         <button type="button" class="nav-item" data-section="imports">Importacoes</button>
         <button type="button" class="nav-item" data-section="movements">Movimentacoes</button>
-        <button type="button" class="nav-item" data-section="duplicates">Duplicidades</button>
+        <button type="button" class="nav-item" data-section="duplicates">Revisoes</button>
         <button type="button" class="nav-item" data-section="history">Historico OFX</button>
         <button type="button" class="nav-item" data-section="installments">Parcelamentos</button>
         <button type="button" class="nav-item" data-section="categories">Categorias</button>
@@ -171,7 +171,7 @@
           <button type="button" id="menuToggle" class="btn btn-ghost nav-toggle" aria-expanded="false" aria-controls="sidebar">Menu</button>
           <img class="brand-logo header-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="RebeccaCash">
           <div>
-            <p class="eyebrow">RebeccaCash</p>
+            <p class="eyebrow">Operacao financeira</p>
             <h2 id="pageTitle">Dashboard</h2>
           </div>
         </div>
@@ -530,11 +530,11 @@
         <section id="section-duplicates" class="section-stack hidden">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Duplicidades</p>
-              <h3>Localizacao rapida de lancamentos similares</h3>
+              <p class="eyebrow">Controle tecnico</p>
+              <h3>Revisoes de importacao</h3>
             </div>
             <div class="toolbar-inline">
-              <button type="button" id="refreshDuplicatesButton" class="btn btn-secondary">Atualizar duplicidades</button>
+              <button type="button" id="refreshDuplicatesButton" class="btn btn-secondary">Atualizar revisoes</button>
             </div>
           </div>
           <article class="panel">
@@ -658,21 +658,26 @@
         <section id="section-suppliers" class="section-stack hidden">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Cadastros</p>
+              <p class="eyebrow">Analise de gastos</p>
               <h3>Fornecedores</h3>
             </div>
             <div class="toolbar-inline">
-              <input type="search" id="search-counterparties" class="compact-search" placeholder="Pesquisar fornecedores">
-              <button type="button" class="btn btn-primary" data-open-entity="counterparties">Novo fornecedor</button>
+              <input type="search" id="search-counterparties" class="compact-search" placeholder="Pesquisar fornecedor, categoria, banco ou conta">
+              <button type="button" class="btn btn-primary" data-open-entity="counterparties">Cadastrar fornecedor</button>
             </div>
           </div>
           <article class="panel">
-            <div id="table-counterparties" class="data-region"></div>
-            <div class="pagination-row">
-              <button type="button" class="btn btn-ghost" data-page-prev="counterparties">Pagina anterior</button>
-              <span id="pagination-counterparties" class="pagination-label">Pagina 1</span>
-              <button type="button" class="btn btn-ghost" data-page-next="counterparties">Proxima pagina</button>
+            <div class="section-head compact">
+              <div>
+                <p class="eyebrow">Leitura operacional</p>
+                <h4>Onde mais voce gasta</h4>
+              </div>
             </div>
+            <div id="supplierHighlights" class="stats-grid"></div>
+          </article>
+          <article class="panel">
+            <div id="table-counterparties" class="data-region"></div>
+            <span id="pagination-counterparties" class="pagination-label">Analise do periodo</span>
           </article>
         </section>
 

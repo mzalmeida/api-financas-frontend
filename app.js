@@ -18,7 +18,7 @@ const SECTION_TITLES = {
   dashboard: "Dashboard",
   imports: "Importacoes",
   movements: "Movimentacoes",
-  duplicates: "Duplicidades",
+  duplicates: "Revisoes",
   history: "Historico OFX",
   installments: "Parcelamentos",
   categories: "Categorias",
@@ -211,6 +211,7 @@ const elements = {
   latestTransactions: document.getElementById("latestTransactions"),
   recentImports: document.getElementById("recentImports"),
   bankSummary: document.getElementById("bankSummary"),
+  supplierHighlights: document.getElementById("supplierHighlights"),
   institutionSelect: document.getElementById("institutionSelect"),
   accountSelect: document.getElementById("accountSelect"),
   refreshImportOptions: document.getElementById("refreshImportOptions"),
@@ -237,6 +238,7 @@ const elements = {
   confirmImportButton: document.getElementById("confirmImportButton"),
   historySearch: document.getElementById("historySearch"),
   historyStatusFilter: document.getElementById("historyStatusFilter"),
+  suppliersSearch: document.getElementById("search-counterparties"),
   refreshHistoryButton: document.getElementById("refreshHistoryButton"),
   historyTable: document.getElementById("historyTable"),
   historyDetails: document.getElementById("historyDetails"),
@@ -265,6 +267,8 @@ const elements = {
   saveInstallmentButton: document.getElementById("saveInstallmentButton"),
   installmentMessage: document.getElementById("installmentMessage"),
   installmentsTable: document.getElementById("installmentsTable"),
+  counterpartiesTable: document.getElementById("table-counterparties"),
+  counterpartiesPagination: document.getElementById("pagination-counterparties"),
   settingsForm: document.getElementById("settingsForm"),
   defaultCurrencyCode: document.getElementById("defaultCurrencyCode"),
   timeZone: document.getElementById("timeZone"),
@@ -332,6 +336,7 @@ const state = {
   movementsPagination: { page: 1, total_pages: 1, total: 0 },
   duplicates: [],
   installments: [],
+  suppliers: [],
   selectedImportDetails: null,
   catalogs: {
     categories: catalogState(),
@@ -394,6 +399,29 @@ function duplicateDecisionLabel(value) {
     ignored: "Ignorada",
   };
   return labels[value] || "Pendente";
+}
+
+function importStatusLabel(value) {
+  const labels = {
+    completed: "Importacao concluida",
+    completed_with_errors: "Concluida com registros ignorados",
+    completed_with_duplicates: "Concluida com duplicidades",
+    pending_confirmation: "Aguardando confirmacao",
+    pending_review: "Aguardando revisao",
+    no_new_transactions: "Nenhuma movimentacao nova",
+    failed: "Falha na importacao",
+    cancelled: "Importacao cancelada",
+  };
+  return labels[value] || "Em processamento";
+}
+
+function previewStatusLabel(value) {
+  const labels = {
+    accepted: "Nova",
+    duplicate: "Duplicada confirmada",
+    rejected: "Invalida",
+  };
+  return labels[value] || value || "-";
 }
 
 function loadStoredSession() {
@@ -760,6 +788,15 @@ async function fetchDuplicates() {
   state.duplicates = payload.items ?? [];
 }
 
+async function fetchSuppliers() {
+  const query = buildGlobalQuery();
+  const search = elements.suppliersSearch?.value?.trim();
+  if (search) query.set("search", search);
+  const { response, payload } = await apiFetch(`/portal/suppliers?${query.toString()}`);
+  if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar fornecedores.");
+  state.suppliers = payload.items ?? [];
+}
+
 async function fetchInstallments() {
   const { response, payload } = await apiFetch("/portal/installments");
   if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar parcelamentos.");
@@ -918,9 +955,9 @@ function replaceSelectOptions(target, placeholderLabel, values, selectedValue = 
 }
 
 function renderAccountBalances() {
-  const rows = state.overview?.account_balances ?? [];
+  const rows = (state.overview?.account_balances ?? []).filter((row) => row.account_type !== "credit_card");
   if (!rows.length) {
-    renderEmpty(elements.accountBalanceList, "Nenhuma conta encontrada", "Crie uma conta financeira para acompanhar o saldo consolidado.");
+    renderEmpty(elements.accountBalanceList, "Nenhuma conta de saldo disponivel", "Crie ou importe contas correntes, de pagamento, poupanca, carteira ou contas manuais para acompanhar o saldo consolidado.");
     return;
   }
 
@@ -996,9 +1033,9 @@ function renderRecentImports(target, rows) {
 
   rows.forEach((row) => {
     const card = createNode("article", "row-card");
-    card.appendChild(createNode("strong", "", `Status ${row.status_code}`));
-    card.appendChild(createNode("span", "mini-copy", `${row.accepted_rows ?? 0} aceitos • ${row.duplicate_rows ?? 0} duplicados • ${row.total_rows ?? 0} linhas`));
-    card.appendChild(createNode("span", "mini-copy", `Finalizada em ${formatDateTime(row.finished_at || row.started_at)}`));
+    card.appendChild(createNode("strong", "", importStatusLabel(row.status_code)));
+    card.appendChild(createNode("span", "mini-copy", `${row.accepted_rows ?? 0} novas | ${row.duplicate_rows ?? 0} duplicadas | ${row.total_rows ?? 0} linhas analisadas`));
+    card.appendChild(createNode("span", "mini-copy", `Atualizada em ${formatDateTime(row.finished_at || row.started_at)}`));
     target.appendChild(card);
   });
 }
@@ -1167,6 +1204,55 @@ function renderInstallments() {
   ], rows);
 }
 
+function renderSupplierHighlights() {
+  if (!elements.supplierHighlights) return;
+  const rows = state.suppliers ?? [];
+  if (!rows.length) {
+    renderEmpty(elements.supplierHighlights, "Sem fornecedores no periodo", "As despesas agrupadas por fornecedor aparecerao aqui quando houver movimentacao suficiente.");
+    return;
+  }
+
+  const totalSpent = rows.reduce((sum, row) => sum + Number(row.total_spent ?? 0), 0);
+  const totalPurchases = rows.reduce((sum, row) => sum + Number(row.purchase_count ?? 0), 0);
+  const cards = [
+    ["Maior fornecedor", rows[0]?.supplier_name || "-", `${formatCurrency(rows[0]?.total_spent || 0)} no periodo`],
+    ["Fornecedores consolidados", String(rows.length), `${formatCurrency(totalSpent)} em despesas mapeadas`],
+    ["Compras agrupadas", String(totalPurchases), "Descricao normalizada + cadastro existente"],
+  ];
+
+  elements.supplierHighlights.innerHTML = "";
+  cards.forEach(([label, value, support]) => {
+    const card = createNode("article", "stat-card");
+    card.append(createNode("p", "eyebrow", label), createNode("strong", "stat-value", value), createNode("span", "stat-trend", support));
+    elements.supplierHighlights.appendChild(card);
+  });
+}
+
+function renderSuppliers() {
+  renderSupplierHighlights();
+  if (!state.suppliers.length) {
+    renderEmpty(elements.counterpartiesTable, "Nenhum fornecedor encontrado", "Ajuste os filtros globais ou importe novas despesas para montar a analise do periodo.");
+    return;
+  }
+
+  elements.counterpartiesTable.innerHTML = tableHtml([
+    { key: "supplier_name", label: "Fornecedor" },
+    { key: "purchase_count", label: "Compras" },
+    { key: "total_spent", label: "Total gasto", formatter: (value) => formatCurrency(value) },
+    { key: "average_spent", label: "Valor medio", formatter: (value) => formatCurrency(value) },
+    { key: "highest_spent", label: "Maior compra", formatter: (value) => formatCurrency(value) },
+    { key: "last_purchase_at", label: "Ultima compra", formatter: formatDate },
+    { key: "institution_name", label: "Banco" },
+    { key: "financial_account_name", label: "Conta ou cartao" },
+    { key: "primary_category", label: "Categoria predominante" },
+    { key: "percentage_of_expenses", label: "% das despesas", formatter: (value) => `${Number(value || 0).toFixed(1)}%` },
+  ], state.suppliers);
+
+  if (elements.counterpartiesPagination) {
+    elements.counterpartiesPagination.textContent = `${state.suppliers.length} fornecedores consolidados`;
+  }
+}
+
 function syncQuickAccountFields() {
   const isCreditCard = elements.createAccountType.value === "credit_card";
   document.querySelectorAll("[data-credit-card-only='true']").forEach((field) => {
@@ -1206,7 +1292,7 @@ function renderPreview() {
   const headLeft = createNode("div");
   headLeft.append(createNode("p", "eyebrow", "Arquivo analisado"), createNode("h4", "", preview.file.name));
   const headRight = createNode("div", "toolbar-inline");
-  headRight.innerHTML = badge(preview.status, preview.status === "failed" ? "danger" : "success")
+  headRight.innerHTML = badge(importStatusLabel(preview.status), preview.status === "failed" ? "danger" : "success")
     + badge(preview.institution.detected_label || "Instituicao pendente", preview.institution.detected_label ? "info" : "warning");
   head.append(headLeft, headRight);
   summary.appendChild(head);
@@ -1246,7 +1332,7 @@ function renderPreview() {
     { key: "occurred_on", label: "Data", formatter: formatDate },
     { key: "description", label: "Descricao" },
     { key: "amount", label: "Valor", formatter: formatCurrency },
-    { key: "status", label: "Status", formatter: (value) => badge(value, value === "accepted" ? "success" : value === "duplicate" ? "warning" : "danger") },
+    { key: "status", label: "Status", formatter: (value) => badge(previewStatusLabel(value), value === "accepted" ? "success" : value === "duplicate" ? "warning" : "danger") },
     { key: "duplicate_reason", label: "Motivo", formatter: (value) => value || "-" },
   ], rows);
   elements.previewPanel.appendChild(rowsRegion);
@@ -1283,7 +1369,7 @@ function renderHistory() {
       { key: "institution", label: "Banco", formatter: (_, row) => row.institution?.name || "-" },
       { key: "financial_account", label: "Conta", formatter: (_, row) => row.financial_account?.name || "-" },
       { key: "started_at", label: "Inicio", formatter: formatDateTime },
-      { key: "status", label: "Status", formatter: (value) => badge(value, historyTone(value)) },
+      { key: "status", label: "Status", formatter: (value) => badge(importStatusLabel(value), historyTone(value)) },
       { key: "duration", label: "Tempo", formatter: (_, row) => formatDuration(row.started_at, row.finished_at) },
       {
         key: "actions",
@@ -1305,7 +1391,7 @@ function renderHistory() {
 
 function historyTone(status) {
   if (status === "completed") return "success";
-  if (status === "completed_with_errors" || status === "pending_confirmation") return "warning";
+  if (status === "completed_with_duplicates" || status === "completed_with_errors" || status === "pending_confirmation" || status === "pending_review" || status === "no_new_transactions") return "warning";
   if (status === "failed") return "danger";
   return "neutral";
 }
@@ -1340,7 +1426,7 @@ function renderHistoryDetails() {
     ["Duplicados", String(details.totals.duplicate_rows)],
     ["Processados", String(details.totals.processed_rows)],
     ["Saldo OFX", formatCurrency(details.processing_summary?.ledger_balance)],
-    ["Status", details.status],
+    ["Status", importStatusLabel(details.status)],
   ].forEach(([label, value]) => {
     const card = createNode("div", "stat-card");
     card.append(createNode("p", "eyebrow", label), createNode("strong", "stat-value", value));
@@ -1354,7 +1440,7 @@ function renderHistoryDetails() {
     { key: "occurred_on", label: "Data", formatter: formatDate },
     { key: "description", label: "Descricao" },
     { key: "amount", label: "Valor", formatter: formatCurrency },
-    { key: "status", label: "Status", formatter: (value) => badge(value, value === "accepted" ? "success" : value === "duplicate" ? "warning" : "neutral") },
+    { key: "status", label: "Status", formatter: (value) => badge(previewStatusLabel(value), value === "accepted" ? "success" : value === "duplicate" ? "warning" : "neutral") },
     { key: "linked_transaction_id", label: "Vinculo", formatter: (value) => value ? "Criada" : "-" },
   ], details.rows ?? []);
   elements.historyDetails.appendChild(rowsWrap);
@@ -2017,8 +2103,8 @@ async function loadSection(sectionName) {
   }
 
   if (sectionName === "suppliers") {
-    await fetchCatalog("counterparties", state.catalogs.counterparties.pagination.page || 1);
-    renderCatalog("counterparties");
+    await fetchSuppliers();
+    renderSuppliers();
     return;
   }
 
@@ -2055,13 +2141,14 @@ async function refreshActiveSection() {
 
 async function refreshAllData() {
   try {
-    await Promise.all([fetchOverview(), fetchImportOptions(), fetchHistory(), fetchMovements(), fetchDuplicates(), fetchInstallments()]);
+    await Promise.all([fetchOverview(), fetchImportOptions(), fetchHistory(), fetchMovements(), fetchDuplicates(), fetchInstallments(), fetchSuppliers()]);
     renderDashboard();
     renderImportOptions();
     renderHistory();
     renderMovements();
     renderDuplicates();
     renderInstallments();
+    renderSuppliers();
     syncSettingsForm();
     syncProfileForm();
   } catch (error) {
@@ -2520,6 +2607,11 @@ function registerEventHandlers() {
     if (config.searchId) {
       const input = document.getElementById(config.searchId);
       input?.addEventListener("input", async () => {
+        if (entityName === "counterparties" && state.activeSection === "suppliers") {
+          await fetchSuppliers();
+          renderSuppliers();
+          return;
+        }
         state.catalogs[entityName].search = input.value.trim();
         state.catalogs[entityName].pagination.page = 1;
         await fetchCatalog(entityName, 1);
