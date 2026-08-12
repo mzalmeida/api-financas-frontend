@@ -101,3 +101,12 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - `Contas Financeiras` passou a expor tipos como `wallet`, `manual` e `credit_card` tambem no fluxo rapido de importacao;
 - o cadastro manual de parcelamentos gera a base operacional para compromissos mensais antes mesmo da importacao OFX.
 - a publicacao final de 2026-08-02 passou a humanizar tipos tecnicos de conta e movimento, habilitou categorizacao manual em movimentacoes, decisoes operacionais em duplicidades e acoes de vinculo/quitacao/cancelamento em parcelamentos.
+
+## Estado consolidado da F06
+
+- o menu lateral publicado trocou `Duplicidades` por `Revisoes`, preservando a funcao tecnica com linguagem mais adequada;
+- a secao `Fornecedores` passou a mostrar leitura principal de gasto por fornecedor consolidado, com total, frequencia, media, maior compra, ultima compra, banco, conta/cartao e percentual;
+- o dashboard publicado deixou de misturar `credit_card` na lista de saldo disponivel;
+- `Importacoes recentes` passou a usar status humanizados e contadores `novas`, `duplicadas` e `linhas analisadas`;
+- a responsividade do shell principal foi reforcada com foco em sidebar, topbar, cards e tabelas;
+- a validacao autenticada publicada de 2026-08-04 confirmou `Dashboard`, `Revisoes` e `Fornecedores` funcionando com a nova versao.

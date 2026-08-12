@@ -193,6 +193,7 @@ const elements = {
   navButtons: Array.from(document.querySelectorAll(".nav-item[data-section]")),
   sidebarLogout: document.getElementById("sidebarLogout"),
   refreshAllButton: document.getElementById("refreshAllButton"),
+  globalFiltersPanel: document.getElementById("globalFiltersPanel"),
   filterCompetence: document.getElementById("filterCompetence"),
   filterBank: document.getElementById("filterBank"),
   filterAccount: document.getElementById("filterAccount"),
@@ -641,6 +642,7 @@ function escapeHtml(value) {
 }
 
 function renderEmpty(target, title, description) {
+  if (!target) return;
   target.replaceChildren();
   const box = createNode("div", "empty-state");
   box.appendChild(createNode("strong", "", title));
@@ -770,7 +772,7 @@ async function fetchImportOptions() {
 async function fetchMovements() {
   const query = buildGlobalQuery();
   query.set("page", String(state.movementsPage || 1));
-  query.set("pageSize", "12");
+  query.set("pageSize", "25");
   if (state.globalFilters.search) {
     query.set("search", state.globalFilters.search);
   }
@@ -791,6 +793,7 @@ async function fetchDuplicates() {
 async function fetchSuppliers() {
   const query = buildGlobalQuery();
   const search = elements.suppliersSearch?.value?.trim();
+  query.set("creditCardOnly", "true");
   if (search) query.set("search", search);
   const { response, payload } = await apiFetch(`/portal/suppliers?${query.toString()}`);
   if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar fornecedores.");
@@ -841,10 +844,8 @@ function renderStats() {
   }
 
   elements.statsGrid.replaceChildren(...[
-    ["Saldo geral", formatCurrency(metrics.overall_balance), "Saldo disponivel nas contas financeiras"],
-    ["Receitas do mes", formatCurrency(metrics.monthly_income), "Entradas filtradas pela competencia ativa"],
-    ["Despesas do mes", formatCurrency(metrics.monthly_expense), "Saidas filtradas pela competencia ativa"],
-    ["Resultado do mes", formatCurrency(metrics.monthly_result), metrics.monthly_result >= 0 ? "Resultado positivo" : "Resultado em atencao"],
+    ["Saldo geral", formatCurrency(metrics.overall_balance), "Saldo somado entre as contas com dinheiro disponivel"],
+    ["Receitas x despesas", `${formatCurrency(metrics.monthly_income)} / ${formatCurrency(metrics.monthly_expense)}`, "Entradas e saidas na competencia ativa"],
     ["Duplicidades", String(metrics.duplicate_candidates ?? 0), "Lancamentos parecidos identificados"],
     ["Ultima importacao", formatDateTime(metrics.latest_import_at), "Historico OFX mais recente"],
   ].map(([label, value, support]) => {
@@ -905,10 +906,7 @@ function renderDashboard() {
   renderBarSeries(elements.categorySummary, state.overview?.category_summary ?? [], ["total"], (value) => formatCurrency(value));
   renderAccountBalances();
   renderCardBillSummary();
-  renderInstallmentSummary();
-  renderSimpleTransactions(elements.latestTransactions, state.overview?.latest_transactions ?? [], "Nenhuma transacao encontrada ainda.");
   renderRecentImports(elements.recentImports, state.overview?.import_summary ?? []);
-  renderBankSummary(elements.bankSummary, state.overview?.bank_summary ?? []);
 }
 
 function movementTone(value) {
@@ -962,13 +960,15 @@ function renderAccountBalances() {
   }
 
   elements.accountBalanceList.replaceChildren();
-  rows.forEach((row) => {
-    const card = createNode("article", "row-card");
-    const head = createNode("div", "chart-bar-head");
-    head.append(createNode("strong", "", row.name), createNode("span", "", formatCurrency(row.current_balance)));
-    card.append(head, createNode("span", "mini-copy", `${row.institution_name || "Sem instituicao"} â€¢ ${row.account_type_label || accountTypeLabel(row.account_type)}`));
-    elements.accountBalanceList.appendChild(card);
-  });
+  rows
+    .sort((a, b) => Number(b.current_balance ?? 0) - Number(a.current_balance ?? 0))
+    .forEach((row) => {
+      const card = createNode("article", "row-card");
+      const head = createNode("div", "chart-bar-head");
+      head.append(createNode("strong", "", row.name), createNode("span", "", formatCurrency(row.current_balance)));
+      card.append(head, createNode("span", "mini-copy", `${row.institution_name || "Sem instituicao"} • ${row.account_type_label || accountTypeLabel(row.account_type)}`));
+      elements.accountBalanceList.appendChild(card);
+    });
 }
 
 function renderCardBillSummary() {
@@ -982,8 +982,8 @@ function renderCardBillSummary() {
   summary.cards.forEach((row) => {
     const card = createNode("article", "row-card");
     card.appendChild(createNode("strong", "", row.name));
-    card.appendChild(createNode("span", "mini-copy", `Fatura aberta ${formatCurrency(row.open_amount)} â€¢ Fechada ${formatCurrency(row.closed_amount)}`));
-    card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.next_due_date)} â€¢ Limite ${row.credit_limit_amount ? formatCurrency(row.credit_limit_amount) : "nao informado"}${row.utilized_limit_ratio != null ? ` â€¢ Uso ${row.utilized_limit_ratio}%` : ""}`));
+    card.appendChild(createNode("span", "mini-copy", `Fatura atual ${formatCurrency(row.statement_amount ?? row.open_amount)} • Em aberto ${formatCurrency(row.open_amount)}`));
+    card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.next_due_date)} • Limite ${row.credit_limit_amount ? formatCurrency(row.credit_limit_amount) : "nao informado"}${row.utilized_limit_ratio != null ? ` • Uso ${row.utilized_limit_ratio}%` : ""}`));
     elements.cardBillSummary.appendChild(card);
   });
 }
@@ -1102,8 +1102,9 @@ function renderMovements() {
       { key: "descricao", label: "Descricao", formatter: (_, row) => row.descricao || row.descricao_normalizada || "-" },
       { key: "banco", label: "Banco", formatter: (value) => value || "-" },
       { key: "conta_nome", label: "Conta", formatter: (value) => value || "-" },
+      { key: "tipo_conta_label", label: "Origem", formatter: (value) => value || "-" },
       { key: "categoria", label: "Categoria", formatter: (value) => value || "Sem categoria" },
-      { key: "fornecedor", label: "Fornecedor", formatter: (value) => value || "Sem fornecedor" },
+      { key: "contraparte", label: "Fornecedor", formatter: (value) => value || "-" },
       { key: "tipo_movimento", label: "Tipo", formatter: (value) => badge(movementTypeLabel(value || "adjustment"), movementTone(value)) },
       { key: "valor", label: "Valor", formatter: formatCurrency },
       {
@@ -1198,6 +1199,7 @@ function renderInstallments() {
       formatter: (_, row) => [
         `<button type="button" class="btn btn-ghost installment-action" data-action="mark-paid" data-plan-id="${row.plan_id}" data-item-id="${row.item_id || ""}">Marcar paga</button>`,
         `<button type="button" class="btn btn-ghost installment-action" data-action="link" data-plan-id="${row.plan_id}" data-item-id="${row.item_id || ""}">Vincular</button>`,
+        `<button type="button" class="btn btn-ghost installment-action" data-action="delete-plan" data-plan-id="${row.plan_id}">Excluir</button>`,
         `<button type="button" class="btn btn-ghost installment-action" data-action="cancel-plan" data-plan-id="${row.plan_id}">Cancelar</button>`,
       ].join(" "),
     },
@@ -1246,6 +1248,11 @@ function renderSuppliers() {
     { key: "financial_account_name", label: "Conta ou cartao" },
     { key: "primary_category", label: "Categoria predominante" },
     { key: "percentage_of_expenses", label: "% das despesas", formatter: (value) => `${Number(value || 0).toFixed(1)}%` },
+    {
+      key: "actions",
+      label: "Acoes",
+      formatter: (_, row) => `<button type="button" class="btn btn-ghost supplier-action" data-supplier="${escapeHtml(row.supplier_name)}">Ver gastos</button>`,
+    },
   ], state.suppliers);
 
   if (elements.counterpartiesPagination) {
@@ -1759,6 +1766,10 @@ async function handleMovementTableAction(event) {
   const button = event.target.closest(".movement-action[data-action='categorize']");
   if (!button) return;
 
+  if (!state.catalogs.categories.items.length) {
+    await fetchCatalog("categories", 1);
+  }
+
   const movement = state.movements.find((item) => item.id === button.dataset.id);
   if (!movement) return;
 
@@ -1778,7 +1789,7 @@ async function handleMovementTableAction(event) {
       method: "PATCH",
       body: {
         categoryId: category.id,
-        notes: movement.observacoes || null,
+        notes: movement.notes || null,
       },
     });
 
@@ -1787,16 +1798,29 @@ async function handleMovementTableAction(event) {
       return;
     }
 
-    await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates()]);
+    await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates(), fetchSuppliers()]);
     renderMovements();
     renderDashboard();
     renderDuplicates();
+    renderSuppliers();
     showToast("Categoria atualizada sem recarregar a pagina.", "success");
   } finally {
     setLoading(button, false);
   }
 }
 
+async function handleSupplierTableAction(event) {
+  const button = event.target.closest(".supplier-action[data-supplier]");
+  if (!button) return;
+
+  state.globalFilters.search = button.dataset.supplier;
+  elements.movementsSearch.value = button.dataset.supplier;
+  state.movementsPage = 1;
+  setActiveSection("movements");
+  await fetchMovements();
+  renderMovements();
+  showToast("Movimentacoes filtradas pelo fornecedor selecionado.", "info");
+}
 async function handleDuplicateTableAction(event) {
   const button = event.target.closest(".duplicate-action");
   if (!button) return;
@@ -1849,6 +1873,20 @@ async function handleInstallmentTableAction(event) {
       return;
     }
 
+    if (action === "delete-plan") {
+      const { response, payload } = await apiFetch(`/portal/installments/${planId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        showToast(payload?.erro || "Nao foi possivel excluir o parcelamento.", "error");
+        return;
+      }
+      await Promise.all([fetchInstallments(), fetchOverview()]);
+      renderInstallments();
+      renderDashboard();
+      showToast("Parcelamento removido da lista ativa.", "success");
+      return;
+    }
     if (!itemId) {
       showToast("Selecione uma linha de parcela para esta acao.", "warning");
       return;
@@ -2127,6 +2165,7 @@ function setActiveSection(sectionName) {
   elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.section === sectionName));
   elements.pageTitle.textContent = SECTION_TITLES[sectionName];
   document.title = `${APP_NAME} - ${SECTION_TITLES[sectionName]}`;
+  elements.globalFiltersPanel?.classList.toggle("hidden", !["dashboard", "movements", "duplicates", "history", "suppliers"].includes(sectionName));
   elements.sidebar.classList.remove("is-open");
   elements.menuToggle.setAttribute("aria-expanded", "false");
 }
@@ -2141,7 +2180,7 @@ async function refreshActiveSection() {
 
 async function refreshAllData() {
   try {
-    await Promise.all([fetchOverview(), fetchImportOptions(), fetchHistory(), fetchMovements(), fetchDuplicates(), fetchInstallments(), fetchSuppliers()]);
+    await Promise.all([fetchOverview(), fetchImportOptions(), fetchHistory(), fetchMovements(), fetchDuplicates(), fetchInstallments(), fetchSuppliers(), fetchCatalog("categories", 1)]);
     renderDashboard();
     renderImportOptions();
     renderHistory();
@@ -2149,6 +2188,7 @@ async function refreshAllData() {
     renderDuplicates();
     renderInstallments();
     renderSuppliers();
+    renderCatalog("categories");
     syncSettingsForm();
     syncProfileForm();
   } catch (error) {
@@ -2536,6 +2576,7 @@ function registerEventHandlers() {
   elements.movementsTable.addEventListener("click", handleMovementTableAction);
   elements.duplicatesTable.addEventListener("click", handleDuplicateTableAction);
   elements.installmentsTable.addEventListener("click", handleInstallmentTableAction);
+  elements.counterpartiesTable.addEventListener("click", handleSupplierTableAction);
   elements.applyGlobalFilters.addEventListener("click", async () => {
     state.globalFilters.competence = elements.filterCompetence.value;
     state.globalFilters.bank = elements.filterBank.value;
@@ -2701,3 +2742,14 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+
+
+
+
+
+
+
+
+
+

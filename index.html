@@ -26,9 +26,6 @@
   <main id="authShell" class="auth-shell">
     <section id="login" class="auth-panel panel">
       <div class="auth-copy">
-        <div class="brand-hero">
-          <img class="brand-logo auth-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="Logo RebeccaCash">
-        </div>
         <p class="eyebrow">RebeccaCash</p>
         <h1>Inteligencia financeira com acabamento de software premium.</h1>
         <p class="support-copy">Controle saldo, importacoes OFX, historico, cadastros e indicadores reais em uma experiencia sofisticada, segura e pronta para uso diario.</p>
@@ -50,9 +47,6 @@
 
       <div class="auth-card panel">
         <div class="auth-card-head">
-          <div class="brand-inline">
-            <img class="brand-logo compact-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="RebeccaCash">
-          </div>
           <p class="eyebrow">Acesso</p>
           <h2>Entrar no RebeccaCash</h2>
         </div>
@@ -76,7 +70,6 @@
 
     <section id="forgotPassword" class="auth-panel panel hidden">
       <div class="auth-copy narrow">
-        <img class="brand-logo auth-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="Logo RebeccaCash">
         <p class="eyebrow">RebeccaCash</p>
         <h1>Solicite um novo link seguro.</h1>
         <p class="support-copy">O e-mail sera enviado pelo Supabase Auth para o endereco cadastrado.</p>
@@ -104,7 +97,6 @@
 
     <section id="resetPassword" class="auth-panel panel hidden">
       <div class="auth-copy narrow">
-        <img class="brand-logo auth-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="Logo RebeccaCash">
         <p class="eyebrow">RebeccaCash</p>
         <h1>Finalize sua entrada com seguranca.</h1>
         <p id="resetPasswordSubtitle" class="support-copy">Use o link recebido por e-mail para definir sua nova senha.</p>
@@ -137,9 +129,8 @@
   <div id="appShell" class="app-shell hidden">
     <aside id="sidebar" class="sidebar">
       <div class="brand-mark">
-        <img class="brand-logo sidebar-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="RebeccaCash">
         <div>
-          <p class="eyebrow">Software financeiro pessoal</p>
+          <p class="eyebrow">Controle financeiro pessoal</p>
           <strong>RebeccaCash</strong>
         </div>
       </div>
@@ -169,7 +160,6 @@
       <header class="topbar panel">
         <div class="topbar-main">
           <button type="button" id="menuToggle" class="btn btn-ghost nav-toggle" aria-expanded="false" aria-controls="sidebar">Menu</button>
-          <img class="brand-logo header-brand-logo" src="assets/brand/logo-rebeccacash.png" alt="RebeccaCash">
           <div>
             <p class="eyebrow">Operacao financeira</p>
             <h2 id="pageTitle">Dashboard</h2>
@@ -185,7 +175,7 @@
         </div>
       </header>
 
-      <section class="panel global-filters" aria-label="Filtros globais">
+      <section id="globalFiltersPanel" class="panel global-filters" aria-label="Filtros globais">
         <div class="section-head compact">
           <div>
             <p class="eyebrow">Filtros globais</p>
@@ -228,7 +218,7 @@
                 </div>
                 <span id="lastImportBadge" class="status-badge neutral">Competencia ativa: --</span>
               </div>
-              <p class="section-copy">Ao abrir o RebeccaCash, voce deve entender saldo disponivel, ritmo do mes, pressao de fatura e compromissos parcelados sem precisar interpretar tabelas soltas.</p>
+              <p class="section-copy">Ao abrir o RebeccaCash, voce deve entender saldo disponivel, entradas, saidas e pressao de fatura sem precisar interpretar tabelas soltas.</p>
             </article>
 
             <article class="hero-card panel accent-card">
@@ -288,17 +278,7 @@
             </article>
           </div>
 
-          <div class="dashboard-grid">
-            <article class="panel">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Ultimas transacoes</p>
-                  <h3>Movimentacoes recentes</h3>
-                </div>
-              </div>
-              <div id="latestTransactions" class="data-region"></div>
-            </article>
-
+          <div class="dashboard-grid dashboard-grid-compact">
             <article class="panel">
               <div class="section-head">
                 <div>
@@ -309,25 +289,6 @@
               <div id="recentImports" class="data-region"></div>
             </article>
 
-            <article class="panel">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Instituicoes</p>
-                  <h3>Resumo por banco</h3>
-                </div>
-              </div>
-              <div id="bankSummary" class="data-region"></div>
-            </article>
-
-            <article class="panel">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Parcelamentos</p>
-                  <h3>Compromissos em aberto</h3>
-                </div>
-              </div>
-              <div id="installmentSummary" class="data-region"></div>
-            </article>
           </div>
         </section>
 
@@ -510,7 +471,7 @@
           <div class="section-head">
             <div>
               <p class="eyebrow">Movimentacoes</p>
-              <h3>Pesquisa, filtros e classificacao visual</h3>
+              <h3>Todas as entradas e saidas com categorizacao</h3>
             </div>
             <div class="toolbar-inline">
               <input type="search" id="movementsSearch" class="compact-search" placeholder="Pesquisar descricao, banco, categoria ou fornecedor">
