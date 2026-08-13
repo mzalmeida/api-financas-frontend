@@ -776,7 +776,8 @@ async function fetchImportOptions() {
 async function fetchMovements() {
   const query = buildGlobalQuery();
   query.set("page", String(state.movementsPage || 1));
-  query.set("pageSize", "25");
+  query.set("allPeriod", "true");
+  query.set("pageSize", "1000");
   if (state.globalFilters.search) {
     query.set("search", state.globalFilters.search);
   }
@@ -850,7 +851,6 @@ function renderStats() {
   elements.statsGrid.replaceChildren(...[
     ["Saldo geral", formatCurrency(metrics.overall_balance), "Saldo somado entre as contas com dinheiro disponivel"],
     ["Receitas x despesas", `${formatCurrency(metrics.monthly_income)} / ${formatCurrency(metrics.monthly_expense)}`, "Entradas e saidas na competencia ativa"],
-    ["Duplicidades", String(metrics.duplicate_candidates ?? 0), "Lancamentos parecidos identificados"],
     ["Ultima importacao", formatDateTime(metrics.latest_import_at), "Historico OFX mais recente"],
   ].map(([label, value, support]) => {
     const card = createNode("article", "stat-card");
@@ -988,6 +988,7 @@ function renderCardBillSummary() {
     card.appendChild(createNode("strong", "", row.name));
     card.appendChild(createNode("span", "mini-copy", `Fatura atual ${formatCurrency(row.statement_amount ?? row.open_amount)} • Em aberto ${formatCurrency(row.open_amount)}`));
     card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.next_due_date)} • Limite ${row.credit_limit_amount ? formatCurrency(row.credit_limit_amount) : "nao informado"}${row.utilized_limit_ratio != null ? ` • Uso ${row.utilized_limit_ratio}%` : ""}`));
+    if (row.installment_summary?.length) card.appendChild(createNode("span", "mini-copy", row.installment_summary.map((item) => `Parcela ${item.installment_number} - ${formatCurrency(item.amount)}`).join(" â€¢ ")));
     elements.cardBillSummary.appendChild(card);
   });
 }
@@ -1823,9 +1824,10 @@ async function persistMovementCategory(movementId, categoryId, notes = null) {
 async function fetchSupplierMovementsForCategorization(supplierName) {
   const query = buildGlobalQuery();
   query.set("creditCardOnly", "true");
+  query.set("allPeriod", "true");
   query.set("search", supplierName);
   query.set("page", "1");
-  query.set("pageSize", "500");
+  query.set("pageSize", "1000");
 
   const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
   if (!response.ok) {

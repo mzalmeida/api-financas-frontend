@@ -1271,6 +1271,28 @@ textarea:focus-visible,
   background: rgba(255, 255, 255, 0.82);
 }
 
+.global-filters .filters-grid {
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  align-items: center;
+}
+
+.global-filters .filters-grid .btn {
+  min-width: 0;
+  padding-inline: 0.8rem;
+}
+
+@media (max-width: 900px) {
+  .global-filters .filters-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .global-filters .filters-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .hero-card.accent-card {
   background:
     linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(255, 255, 255, 0.98)),
