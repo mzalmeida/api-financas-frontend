@@ -1827,8 +1827,21 @@ async function persistMovementCategory(movementId, categoryId, notes = null) {
   return payload.item ?? null;
 }
 
-$11000");
+async function fetchSupplierMovementsForCategorization(supplierName, supplierKey) {
+  const query = buildGlobalQuery();
+  query.set("creditCardOnly", "true");
+  query.set("allPeriod", "true");
+  query.set("supplierKey", supplierKey);
+  query.set("search", supplierName);
+  query.set("page", "1");
+  query.set("pageSize", "1000");
 
+  const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
+  if (!response.ok) {
+    throw new Error(payload?.erro || "Falha ao carregar as movimentacoes do fornecedor.");
+  }
+  return payload.items ?? [];
+}
   const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
   if (!response.ok) {
     throw new Error(payload?.erro || "Falha ao carregar as movimentacoes do fornecedor.");
