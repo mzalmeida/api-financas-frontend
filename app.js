@@ -1424,6 +1424,11 @@ function renderHistoryDetails() {
     createNode("span", "mini-copy", `${details.financial_account?.name || "Sem conta"} • ${details.institution?.name || "Sem banco"}`),
     createNode("span", "mini-copy", `Periodo ${formatDate(details.processing_summary?.period?.start_date)} a ${formatDate(details.processing_summary?.period?.end_date)}`),
   );
+  if (details.status === "pending_confirmation") {
+    const actions = createNode("div", "toolbar-inline");
+    actions.innerHTML = `<button type="button" class="btn btn-primary history-detail-action" data-action="confirm" data-import-id="${details.id}">Confirmar importacao</button>`;
+    summary.appendChild(actions);
+  }
   elements.historyDetails.appendChild(summary);
 
   const meta = createNode("div", "stats-grid");
@@ -1987,13 +1992,19 @@ async function handleConfirmImport() {
     return;
   }
 
-  setLoading(elements.confirmImportButton, true, "Confirmando...");
+  await confirmImportById(state.preview.import_id, elements.confirmImportButton);
+}
+
+async function confirmImportById(importId, triggerButton = null) {
+  const actionButton = triggerButton || elements.confirmImportButton;
+
+  setLoading(actionButton, true, "Confirmando...");
   setMessage(elements.importMessage, "");
 
   try {
     const { response, payload } = await apiFetch("/imports/ofx/confirm", {
       method: "POST",
-      body: { importId: state.preview.import_id },
+      body: { importId },
     });
     if (!response.ok) {
       setMessage(elements.importMessage, payload?.erro || "Falha ao confirmar a importacao.", "error");
@@ -2008,7 +2019,7 @@ async function handleConfirmImport() {
   } catch (error) {
     setMessage(elements.importMessage, error.message || "Falha ao confirmar a importacao.", "error");
   } finally {
-    setLoading(elements.confirmImportButton, false);
+    setLoading(actionButton, false);
   }
 }
 
@@ -2040,6 +2051,19 @@ async function handleHistoryAction(event) {
     showToast(error.message || "Falha ao processar a acao da importacao.", "error");
   } finally {
     setLoading(button, false);
+  }
+}
+
+async function handleHistoryDetailsAction(event) {
+  const button = event.target.closest(".history-detail-action");
+  if (!button) return;
+  const { action, importId } = button.dataset;
+  if (action !== "confirm" || !importId) return;
+
+  try {
+    await confirmImportById(importId, button);
+  } catch (error) {
+    showToast(error.message || "Falha ao confirmar a importacao.", "error");
   }
 }
 
@@ -2573,6 +2597,8 @@ function registerEventHandlers() {
     renderHistory();
   });
   elements.historyTable.addEventListener("click", handleHistoryAction);
+  elements.historyDetails.addEventListener("click", handleHistoryDetailsAction);
+
   elements.movementsTable.addEventListener("click", handleMovementTableAction);
   elements.duplicatesTable.addEventListener("click", handleDuplicateTableAction);
   elements.installmentsTable.addEventListener("click", handleInstallmentTableAction);
