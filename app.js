@@ -207,6 +207,8 @@ const elements = {
   installmentSummary: document.getElementById("installmentSummary"),
   dashboardGreeting: document.getElementById("dashboardGreeting"),
   lastImportBadge: document.getElementById("lastImportBadge"),
+  dashboardCompetence: document.getElementById("dashboardCompetence"),
+  applyDashboardCompetence: document.getElementById("applyDashboardCompetence"),
   monthlyTrend: document.getElementById("monthlyTrend"),
   categorySummary: document.getElementById("categorySummary"),
   latestTransactions: document.getElementById("latestTransactions"),
@@ -865,8 +867,9 @@ function renderStats() {
   elements.dashboardGreeting.textContent = state.overview?.user?.display_name
     ? `Bom trabalho, ${state.overview.user.display_name}.`
     : "Seu panorama financeiro em um unico lugar";
-  elements.lastImportBadge.className = "status-badge neutral";
-  elements.lastImportBadge.textContent = `Competencia ativa: ${state.globalFilters.competence || "--"}`;
+  if (elements.dashboardCompetence) {
+    elements.dashboardCompetence.value = state.globalFilters.competence || "";
+  }
 }
 
 function renderBarSeries(target, rows, valueKeys, formatter) {
@@ -2714,6 +2717,18 @@ function registerEventHandlers() {
   elements.duplicatesTable.addEventListener("click", handleDuplicateTableAction);
   elements.installmentsTable.addEventListener("click", handleInstallmentTableAction);
   elements.counterpartiesTable.addEventListener("click", handleSupplierTableAction);
+  elements.applyDashboardCompetence?.addEventListener("click", async () => {
+    const competence = elements.dashboardCompetence.value;
+    if (!competence) {
+      showToast("Selecione uma competencia.", "warning");
+      return;
+    }
+    state.globalFilters.competence = competence;
+    state.movementsPage = 1;
+    await fetchOverview();
+    renderDashboard();
+    showToast(`Competencia ${competence} aplicada.`, "info");
+  });
   elements.applyGlobalFilters.addEventListener("click", async () => {
     state.globalFilters.competence = elements.filterCompetence.value;
     state.globalFilters.bank = elements.filterBank.value;
