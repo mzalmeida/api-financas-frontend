@@ -332,6 +332,7 @@ const state = {
     financialAccountId: "",
     movementType: "",
     category: "",
+    supplierKey: "",
     search: "",
   },
   history: [],
@@ -661,6 +662,7 @@ function buildGlobalQuery() {
   if (state.globalFilters.financialAccountId) query.set("financialAccountId", state.globalFilters.financialAccountId);
   if (state.globalFilters.movementType) query.set("movementType", state.globalFilters.movementType);
   if (state.globalFilters.category) query.set("category", state.globalFilters.category);
+  if (state.globalFilters.supplierKey) query.set("supplierKey", state.globalFilters.supplierKey);
   return query;
 }
 
@@ -1252,8 +1254,8 @@ function renderSuppliers() {
       key: "actions",
       label: "Acoes",
       formatter: (_, row) => [
-        `<button type="button" class="btn btn-ghost supplier-action" data-action="view" data-supplier="${escapeHtml(row.supplier_name)}">Ver gastos</button>`,
-        `<button type="button" class="btn btn-ghost supplier-action" data-action="categorize" data-supplier="${escapeHtml(row.supplier_name)}">Categorizar gastos</button>`,
+        `<button type="button" class="btn btn-ghost supplier-action" data-action="view" data-supplier="${escapeHtml(row.supplier_name)}" data-supplier-key="${escapeHtml(row.supplier_key)}">Ver gastos</button>`,
+        `<button type="button" class="btn btn-ghost supplier-action" data-action="categorize" data-supplier="${escapeHtml(row.supplier_name)}" data-supplier-key="${escapeHtml(row.supplier_key)}">Categorizar gastos</button>`,
       ].join(" "),
     },
   ], state.suppliers);
@@ -1821,10 +1823,11 @@ async function persistMovementCategory(movementId, categoryId, notes = null) {
   return payload.item ?? null;
 }
 
-async function fetchSupplierMovementsForCategorization(supplierName) {
+async function fetchSupplierMovementsForCategorization(supplierName, supplierKey) {
   const query = buildGlobalQuery();
   query.set("creditCardOnly", "true");
   query.set("allPeriod", "true");
+  query.set("supplierKey", supplierKey);
   query.set("search", supplierName);
   query.set("page", "1");
   query.set("pageSize", "1000");
@@ -1833,13 +1836,7 @@ async function fetchSupplierMovementsForCategorization(supplierName) {
   if (!response.ok) {
     throw new Error(payload?.erro || "Falha ao carregar as movimentacoes do fornecedor.");
   }
-
-  const supplierKey = normalizeText(supplierName);
-  return (payload.items ?? []).filter((row) => normalizeText([
-    row.contraparte,
-    row.descricao,
-    row.descricao_normalizada,
-  ].join(" ")).includes(supplierKey));
+  return payload.items ?? [];
 }
 
 async function handleMovementTableAction(event) {
@@ -1871,8 +1868,8 @@ async function handleMovementTableAction(event) {
 async function handleSupplierTableAction(event) {
   const button = event.target.closest(".supplier-action[data-supplier]");
   if (!button) return;
-
   const supplierName = button.dataset.supplier;
+  const supplierKey = button.dataset.supplierKey || supplierName;
   const action = button.dataset.action || "view";
 
   if (action === "view") {
@@ -1893,7 +1890,7 @@ async function handleSupplierTableAction(event) {
     if (!category) return;
 
     setLoading(button, true, "Salvando...");
-    const movements = await fetchSupplierMovementsForCategorization(supplierName);
+    const movements = await fetchSupplierMovementsForCategorization(supplierName, supplierKey);
     if (!movements.length) {
       showToast("Nenhuma movimentacao encontrada para este fornecedor no periodo atual.", "warning");
       return;
@@ -2731,6 +2728,7 @@ function registerEventHandlers() {
       financialAccountId: "",
       movementType: "",
       category: "",
+    supplierKey: "",
       search: "",
     };
     elements.filterCompetence.value = state.globalFilters.competence;
