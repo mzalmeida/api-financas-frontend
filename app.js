@@ -1827,14 +1827,7 @@ async function persistMovementCategory(movementId, categoryId, notes = null) {
   return payload.item ?? null;
 }
 
-async function fetchSupplierMovementsForCategorization(supplierName, supplierKey) {
-  const query = buildGlobalQuery();
-  query.set("creditCardOnly", "true");
-  query.set("allPeriod", "true");
-  query.set("supplierKey", supplierKey);
-  query.set("search", supplierName);
-  query.set("page", "1");
-  query.set("pageSize", "25");
+$11000");
 
   const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
   if (!response.ok) {
