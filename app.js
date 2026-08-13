@@ -779,7 +779,7 @@ async function fetchMovements() {
   const query = buildGlobalQuery();
   query.set("page", String(state.movementsPage || 1));
   query.set("allPeriod", "true");
-  query.set("pageSize", "1000");
+  query.set("pageSize", "25");
   if (state.globalFilters.search) {
     query.set("search", state.globalFilters.search);
   }
@@ -1834,7 +1834,7 @@ async function fetchSupplierMovementsForCategorization(supplierName, supplierKey
   query.set("supplierKey", supplierKey);
   query.set("search", supplierName);
   query.set("page", "1");
-  query.set("pageSize", "1000");
+  query.set("pageSize", "25");
 
   const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
   if (!response.ok) {
