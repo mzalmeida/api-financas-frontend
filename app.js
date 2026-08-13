@@ -1842,12 +1842,6 @@ async function fetchSupplierMovementsForCategorization(supplierName, supplierKey
   }
   return payload.items ?? [];
 }
-  const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
-  if (!response.ok) {
-    throw new Error(payload?.erro || "Falha ao carregar as movimentacoes do fornecedor.");
-  }
-  return payload.items ?? [];
-}
 
 async function handleMovementTableAction(event) {
   const button = event.target.closest(".movement-action[data-action='categorize']");
