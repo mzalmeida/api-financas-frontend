@@ -912,7 +912,6 @@ function renderDashboard() {
   renderBarSeries(elements.categorySummary, state.overview?.category_summary ?? [], ["total"], (value) => formatCurrency(value));
   renderAccountBalances();
   renderCardBillSummary();
-  renderRecentImports(elements.recentImports, state.overview?.import_summary ?? []);
 }
 
 function movementTone(value) {
@@ -979,22 +978,27 @@ function renderAccountBalances() {
 
 function renderCardBillSummary() {
   const summary = state.overview?.card_summary;
-  if (!summary?.cards?.length) {
+  if (!summary?.cards?.length && !summary?.commitments?.length) {
     renderEmpty(elements.cardBillSummary, "Nenhuma fatura aberta", "Assim que contas do tipo cartao de credito receberem lancamentos, a leitura de fatura aparecera aqui.");
     return;
   }
 
   elements.cardBillSummary.replaceChildren();
-  summary.cards.forEach((row) => {
+  (summary.cards ?? []).forEach((row) => {
     const card = createNode("article", "row-card");
     card.appendChild(createNode("strong", "", row.name));
-    card.appendChild(createNode("span", "mini-copy", `Fatura atual ${formatCurrency(row.statement_amount ?? row.open_amount)} • Em aberto ${formatCurrency(row.open_amount)}`));
-    card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.next_due_date)} • Limite ${row.credit_limit_amount ? formatCurrency(row.credit_limit_amount) : "nao informado"}${row.utilized_limit_ratio != null ? ` • Uso ${row.utilized_limit_ratio}%` : ""}`));
-    if (row.installment_summary?.length) card.appendChild(createNode("span", "mini-copy", row.installment_summary.map((item) => `Parcela ${item.installment_number} - ${formatCurrency(item.amount)}`).join(" â€¢ ")));
+    card.appendChild(createNode("span", "mini-copy", `Valor ${formatCurrency(row.statement_amount ?? row.open_amount)}`));
+    card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.next_due_date)} - Limite ${row.credit_limit_amount ? formatCurrency(row.credit_limit_amount) : "nao informado"}`));
+    elements.cardBillSummary.appendChild(card);
+  });
+  (summary.commitments ?? []).forEach((row) => {
+    const card = createNode("article", "row-card");
+    card.appendChild(createNode("strong", "", row.name));
+    card.appendChild(createNode("span", "mini-copy", `Valor ${formatCurrency(row.amount)}`));
+    card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.due_date)}`));
     elements.cardBillSummary.appendChild(card);
   });
 }
-
 function renderInstallmentSummary() {
   const summary = state.overview?.installment_summary;
   if (!summary?.count) {
