@@ -275,6 +275,10 @@ const elements = {
   timeZone: document.getElementById("timeZone"),
   themePreference: document.getElementById("themePreference"),
   compactCards: document.getElementById("compactCards"),
+  hideDuplicatesTab: document.getElementById("hideDuplicatesTab"),
+  hideHistoryTab: document.getElementById("hideHistoryTab"),
+  hideInstallmentsTab: document.getElementById("hideInstallmentsTab"),
+  hideSuppliersTab: document.getElementById("hideSuppliersTab"),
   saveSettingsButton: document.getElementById("saveSettingsButton"),
   settingsMessage: document.getElementById("settingsMessage"),
   profileForm: document.getElementById("profileForm"),
@@ -1669,11 +1673,17 @@ function editCatalogItem(event) {
 function syncSettingsForm() {
   const settings = state.profile?.settings;
   if (!settings) return;
+  const hiddenSections = settings.dashboard_preferences?.hidden_sections ?? [];
   elements.defaultCurrencyCode.value = settings.default_currency_code || "BRL";
   elements.timeZone.value = settings.time_zone || "America/Sao_Paulo";
   elements.themePreference.value = settings.dashboard_preferences?.theme || DEFAULT_THEME;
   elements.compactCards.checked = Boolean(settings.dashboard_preferences?.compact_cards);
+  elements.hideDuplicatesTab.checked = hiddenSections.includes("duplicates");
+  elements.hideHistoryTab.checked = hiddenSections.includes("history");
+  elements.hideInstallmentsTab.checked = hiddenSections.includes("installments");
+  elements.hideSuppliersTab.checked = hiddenSections.includes("suppliers");
   applyTheme(elements.themePreference.value);
+  applyMenuVisibility(hiddenSections);
 }
 
 function syncProfileForm() {
@@ -2256,6 +2266,11 @@ async function loadSection(sectionName) {
 }
 
 function setActiveSection(sectionName) {
+  const hiddenSections = state.profile?.settings?.dashboard_preferences?.hidden_sections ?? [];
+  const fallbackSection = elements.navButtons.find((button) => !hiddenSections.includes(button.dataset.section))?.dataset.section || "dashboard";
+  if (hiddenSections.includes(sectionName)) {
+    sectionName = fallbackSection;
+  }
   state.activeSection = sectionName;
   Object.entries(elements.sections).forEach(([key, section]) => {
     section.classList.toggle("hidden", key !== sectionName);
@@ -2263,9 +2278,16 @@ function setActiveSection(sectionName) {
   elements.navButtons.forEach((button) => button.classList.toggle("is-active", button.dataset.section === sectionName));
   elements.pageTitle.textContent = SECTION_TITLES[sectionName];
   document.title = `${APP_NAME} - ${SECTION_TITLES[sectionName]}`;
-  elements.globalFiltersPanel?.classList.toggle("hidden", !["dashboard", "movements", "duplicates", "history", "suppliers"].includes(sectionName));
+  elements.globalFiltersPanel?.classList.toggle("hidden", !["movements", "duplicates", "history", "suppliers"].includes(sectionName));
   elements.sidebar.classList.remove("is-open");
   elements.menuToggle.setAttribute("aria-expanded", "false");
+}
+
+function applyMenuVisibility(hiddenSections = []) {
+  const hiddenSet = new Set(hiddenSections);
+  elements.navButtons.forEach((button) => {
+    button.classList.toggle("hidden", hiddenSet.has(button.dataset.section));
+  });
 }
 
 async function refreshActiveSection() {
@@ -2475,6 +2497,13 @@ async function handleSaveSettings(event) {
   setMessage(elements.settingsMessage, "");
 
   try {
+    const hiddenSections = [
+      elements.hideDuplicatesTab.checked ? "duplicates" : null,
+      elements.hideHistoryTab.checked ? "history" : null,
+      elements.hideInstallmentsTab.checked ? "installments" : null,
+      elements.hideSuppliersTab.checked ? "suppliers" : null,
+    ].filter(Boolean);
+
     const { response, payload } = await apiFetch("/portal/settings", {
       method: "PUT",
       body: {
@@ -2484,6 +2513,7 @@ async function handleSaveSettings(event) {
           ...(state.profile?.settings?.dashboard_preferences ?? {}),
           theme: elements.themePreference.value,
           compact_cards: elements.compactCards.checked,
+          hidden_sections: hiddenSections,
         },
         importPreferences: state.profile?.settings?.import_preferences ?? {},
       },
@@ -2496,6 +2526,10 @@ async function handleSaveSettings(event) {
 
     state.profile.settings = payload.settings;
     applyTheme(payload.settings.dashboard_preferences?.theme || DEFAULT_THEME);
+    applyMenuVisibility(payload.settings.dashboard_preferences?.hidden_sections ?? []);
+    if ((payload.settings.dashboard_preferences?.hidden_sections ?? []).includes(state.activeSection)) {
+      setActiveSection("dashboard");
+    }
     setMessage(elements.settingsMessage, "Configuracoes salvas com sucesso.", "success");
     showToast("Configuracoes atualizadas.", "success");
   } catch (error) {
