@@ -276,6 +276,9 @@ const elements = {
   installmentMessage: document.getElementById("installmentMessage"),
   installmentsTable: document.getElementById("installmentsTable"),
   counterpartiesTable: document.getElementById("table-counterparties"),
+  suppliersSelectAll: document.getElementById("suppliersSelectAll"),
+  suppliersSelectionLabel: document.getElementById("suppliersSelectionLabel"),
+  categorizeSelectedSuppliers: document.getElementById("categorizeSelectedSuppliers"),
   counterpartiesPagination: document.getElementById("pagination-counterparties"),
   settingsForm: document.getElementById("settingsForm"),
   defaultCurrencyCode: document.getElementById("defaultCurrencyCode"),
@@ -349,6 +352,8 @@ const state = {
   movementsPagination: { page: 1, total_pages: 1, total: 0 },
   selectedMovementIds: new Set(),
   selectedMovementItems: new Map(),
+  selectedSupplierKeys: new Set(),
+  selectedSupplierItems: new Map(),
   duplicates: [],
   installments: [],
   suppliers: [],
@@ -1265,7 +1270,22 @@ function renderSupplierHighlights() {
   });
 }
 
+function syncSupplierSelectionControls() {
+  const visibleKeys = state.suppliers.map((supplier) => supplier.supplier_key);
+  const selectedVisible = visibleKeys.filter((key) => state.selectedSupplierKeys.has(key)).length;
+  if (elements.suppliersSelectAll) {
+    elements.suppliersSelectAll.checked = visibleKeys.length > 0 && selectedVisible === visibleKeys.length;
+    elements.suppliersSelectAll.indeterminate = selectedVisible > 0 && selectedVisible < visibleKeys.length;
+  }
+  if (elements.suppliersSelectionLabel) {
+    elements.suppliersSelectionLabel.textContent = `${state.selectedSupplierKeys.size} selecionados`;
+  }
+  if (elements.categorizeSelectedSuppliers) {
+    elements.categorizeSelectedSuppliers.disabled = state.selectedSupplierKeys.size === 0;
+  }
+}
 function renderSuppliers() {
+  syncSupplierSelectionControls();
   renderSupplierHighlights();
   if (!state.suppliers.length) {
     renderEmpty(elements.counterpartiesTable, "Nenhum fornecedor encontrado", "Ajuste os filtros globais ou importe novas despesas para montar a analise do periodo.");
@@ -1273,6 +1293,7 @@ function renderSuppliers() {
   }
 
   elements.counterpartiesTable.innerHTML = tableHtml([
+    { key: "selection", label: "Selecionar", formatter: (_, row) => `<input type="checkbox" class="supplier-select" data-key="${row.supplier_key}" ${state.selectedSupplierKeys.has(row.supplier_key) ? "checked" : ""} aria-label="Selecionar fornecedor">` },
     { key: "supplier_name", label: "Fornecedor" },
     { key: "purchase_count", label: "Compras" },
     { key: "total_spent", label: "Total gasto", formatter: (value) => formatCurrency(value) },
@@ -1941,6 +1962,55 @@ async function handleMovementTableAction(event) {
   }
 }
 
+function handleSupplierSelectionChange(event) {
+  const checkbox = event.target.closest(".supplier-select");
+  if (!checkbox) return;
+  const key = checkbox.dataset.key;
+  const supplier = state.suppliers.find((item) => item.supplier_key === key);
+  if (checkbox.checked) {
+    state.selectedSupplierKeys.add(key);
+    if (supplier) state.selectedSupplierItems.set(key, supplier);
+  } else {
+    state.selectedSupplierKeys.delete(key);
+    state.selectedSupplierItems.delete(key);
+  }
+  renderSuppliers();
+}
+
+async function handleBulkCategorizeSuppliers() {
+  const suppliers = [...state.selectedSupplierItems.values()];
+  if (!suppliers.length) {
+    state.selectedSupplierKeys.clear();
+    state.selectedSupplierItems.clear();
+    renderSuppliers();
+    return;
+  }
+
+  try {
+    const category = await chooseCategoryFor(`${suppliers.length} fornecedores selecionados`);
+    if (!category) return;
+    setLoading(elements.categorizeSelectedSuppliers, true, "Carregando gastos...");
+    const batches = await Promise.all(suppliers.map((supplier) => fetchSupplierMovementsForCategorization(supplier.supplier_name, supplier.supplier_key)));
+    const movements = [...new Map(batches.flat().filter((movement) => movement?.id).map((movement) => [movement.id, movement])).values()];
+    if (!movements.length) {
+      throw new Error("Nenhuma movimentacao encontrada para os fornecedores selecionados.");
+    }
+    setLoading(elements.categorizeSelectedSuppliers, true, "Salvando...");
+    await Promise.all(movements.map((movement) => persistMovementCategory(movement.id, category.id, movement.notes || null)));
+    state.selectedSupplierKeys.clear();
+    state.selectedSupplierItems.clear();
+    await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates(), fetchSuppliers()]);
+    renderMovements();
+    renderDashboard();
+    renderDuplicates();
+    renderSuppliers();
+    showToast(`${movements.length} movimentacoes de ${suppliers.length} fornecedores categorizadas como ${category.name}.`, "success");
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel categorizar os fornecedores selecionados.", "error");
+  } finally {
+    setLoading(elements.categorizeSelectedSuppliers, false);
+  }
+}
 async function handleSupplierTableAction(event) {
   const button = event.target.closest(".supplier-action[data-supplier]");
   if (!button) return;
@@ -2814,6 +2884,20 @@ function registerEventHandlers() {
   elements.duplicatesTable.addEventListener("click", handleDuplicateTableAction);
   elements.installmentsTable.addEventListener("click", handleInstallmentTableAction);
   elements.counterpartiesTable.addEventListener("click", handleSupplierTableAction);
+  elements.counterpartiesTable.addEventListener("change", handleSupplierSelectionChange);
+  elements.suppliersSelectAll?.addEventListener("change", () => {
+    state.suppliers.forEach((supplier) => {
+      if (elements.suppliersSelectAll.checked) {
+        state.selectedSupplierKeys.add(supplier.supplier_key);
+        state.selectedSupplierItems.set(supplier.supplier_key, supplier);
+      } else {
+        state.selectedSupplierKeys.delete(supplier.supplier_key);
+        state.selectedSupplierItems.delete(supplier.supplier_key);
+      }
+    });
+    renderSuppliers();
+  });
+  elements.categorizeSelectedSuppliers?.addEventListener("click", handleBulkCategorizeSuppliers);
   elements.applyDashboardCompetence?.addEventListener("click", async () => {
     const competence = elements.dashboardCompetence.value;
     if (!competence) {
