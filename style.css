@@ -1637,6 +1637,51 @@ table {
   flex-wrap: wrap;
 }
 
+.inline-filter {
+  display: grid;
+  gap: 0.2rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.inline-filter input {
+  min-height: 2.45rem;
+  padding: 0.55rem 0.7rem;
+}
+
+.bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.selection-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.selection-count {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+@media (max-width: 900px) {
+  .inline-filter,
+  .inline-filter input,
+  .toolbar-inline > #applyMovementsCompetence {
+    flex: 1 1 9rem;
+  }
+}
+
 .dashboard-competence-control label {
   display: grid;
   gap: 0.25rem;

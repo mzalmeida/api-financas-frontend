@@ -249,6 +249,11 @@ const elements = {
   historyNextPage: document.getElementById("historyNextPage"),
   historyPaginationLabel: document.getElementById("historyPaginationLabel"),
   movementsSearch: document.getElementById("movementsSearch"),
+  movementsCompetence: document.getElementById("movementsCompetence"),
+  applyMovementsCompetence: document.getElementById("applyMovementsCompetence"),
+  movementsSelectAll: document.getElementById("movementsSelectAll"),
+  movementsSelectionLabel: document.getElementById("movementsSelectionLabel"),
+  categorizeSelectedMovements: document.getElementById("categorizeSelectedMovements"),
   refreshMovementsButton: document.getElementById("refreshMovementsButton"),
   movementsTable: document.getElementById("movementsTable"),
   movementsPrevPage: document.getElementById("movementsPrevPage"),
@@ -342,6 +347,8 @@ const state = {
   movements: [],
   movementsPage: 1,
   movementsPagination: { page: 1, total_pages: 1, total: 0 },
+  selectedMovementIds: new Set(),
+  selectedMovementItems: new Map(),
   duplicates: [],
   installments: [],
   suppliers: [],
@@ -1107,11 +1114,18 @@ function renderImportOptions() {
   }
 }
 
+function syncMovementsCompetenceControl() {
+  if (elements.movementsCompetence) {
+    elements.movementsCompetence.value = state.globalFilters.competence || "";
+  }
+}
 function renderMovements() {
+  syncMovementsCompetenceControl();
   if (!state.movements.length) {
     renderEmpty(elements.movementsTable, "Nenhuma movimentacao encontrada", "Ajuste os filtros globais ou importe novos arquivos OFX para preencher esta tela.");
   } else {
     elements.movementsTable.innerHTML = tableHtml([
+      { key: "selection", label: "Selecionar", formatter: (_, row) => `<input type="checkbox" class="movement-select" data-id="${row.id}" ${state.selectedMovementIds.has(row.id) ? "checked" : ""} aria-label="Selecionar movimentacao">` },
       { key: "data", label: "Data", formatter: formatDate },
       { key: "descricao", label: "Descricao", formatter: (_, row) => row.descricao || row.descricao_normalizada || "-" },
       { key: "banco", label: "Banco", formatter: (value) => value || "-" },
@@ -1136,6 +1150,18 @@ function renderMovements() {
   elements.movementsPaginationLabel.textContent = `Pagina ${currentPage} de ${totalPages} • ${totalRows} registros`;
   elements.movementsPrevPage.disabled = currentPage <= 1;
   elements.movementsNextPage.disabled = currentPage >= totalPages;
+  const visibleIds = state.movements.map((movement) => movement.id);
+  const selectedVisible = visibleIds.filter((id) => state.selectedMovementIds.has(id)).length;
+  if (elements.movementsSelectAll) {
+    elements.movementsSelectAll.checked = visibleIds.length > 0 && selectedVisible === visibleIds.length;
+    elements.movementsSelectAll.indeterminate = selectedVisible > 0 && selectedVisible < visibleIds.length;
+  }
+  if (elements.movementsSelectionLabel) {
+    elements.movementsSelectionLabel.textContent = `${state.selectedMovementIds.size} selecionadas`;
+  }
+  if (elements.categorizeSelectedMovements) {
+    elements.categorizeSelectedMovements.disabled = state.selectedMovementIds.size === 0;
+  }
 }
 
 function renderDuplicates() {
@@ -1479,7 +1505,7 @@ function tableHtml(columns, rows) {
         : row[column.key] ?? "-";
       const content = typeof raw === "string" && raw.includes("<span")
         ? raw
-        : typeof raw === "string" && raw.includes("<button")
+        : typeof raw === "string" && (raw.includes("<button") || raw.includes("<input") || raw.includes("<select"))
           ? raw
           : escapeHtml(raw);
       return `<td>${content}</td>`;
@@ -1846,6 +1872,49 @@ async function fetchSupplierMovementsForCategorization(supplierName, supplierKey
   return payload.items ?? [];
 }
 
+function handleMovementSelectionChange(event) {
+  const checkbox = event.target.closest(".movement-select");
+  if (!checkbox) return;
+  if (checkbox.checked) {
+    state.selectedMovementIds.add(checkbox.dataset.id);
+    const movement = state.movements.find((item) => item.id === checkbox.dataset.id);
+    if (movement) state.selectedMovementItems.set(movement.id, movement);
+  } else {
+    state.selectedMovementIds.delete(checkbox.dataset.id);
+    state.selectedMovementItems.delete(checkbox.dataset.id);
+  }
+  renderMovements();
+}
+
+async function handleBulkCategorizeMovements() {
+  const selectedIds = [...state.selectedMovementIds];
+  const movements = [...state.selectedMovementItems.values()];
+  if (!movements.length) {
+    state.selectedMovementIds.clear();
+    state.selectedMovementItems.clear();
+    renderMovements();
+    return;
+  }
+
+  try {
+    const category = await chooseCategoryFor(`${movements.length} movimentacoes selecionadas`);
+    if (!category) return;
+    setLoading(elements.categorizeSelectedMovements, true, "Salvando...");
+    await Promise.all(movements.map((movement) => persistMovementCategory(movement.id, category.id, movement.notes || null)));
+    state.selectedMovementIds.clear();
+    state.selectedMovementItems.clear();
+    await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates(), fetchSuppliers()]);
+    renderMovements();
+    renderDashboard();
+    renderDuplicates();
+    renderSuppliers();
+    showToast(`${movements.length} movimentacoes categorizadas como ${category.name}.`, "success");
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel categorizar as movimentacoes selecionadas.", "error");
+  } finally {
+    setLoading(elements.categorizeSelectedMovements, false);
+  }
+}
 async function handleMovementTableAction(event) {
   const button = event.target.closest(".movement-action[data-action='categorize']");
   if (!button) return;
@@ -2714,6 +2783,34 @@ function registerEventHandlers() {
   elements.historyDetails.addEventListener("click", handleHistoryDetailsAction);
 
   elements.movementsTable.addEventListener("click", handleMovementTableAction);
+  elements.movementsTable.addEventListener("change", handleMovementSelectionChange);
+  elements.movementsSelectAll?.addEventListener("change", () => {
+    state.movements.forEach((movement) => {
+      if (elements.movementsSelectAll.checked) {
+        state.selectedMovementIds.add(movement.id);
+        state.selectedMovementItems.set(movement.id, movement);
+      } else {
+        state.selectedMovementIds.delete(movement.id);
+        state.selectedMovementItems.delete(movement.id);
+      }
+    });
+    renderMovements();
+  });
+  elements.categorizeSelectedMovements?.addEventListener("click", handleBulkCategorizeMovements);
+  elements.applyMovementsCompetence?.addEventListener("click", async () => {
+    const competence = elements.movementsCompetence.value;
+    if (!competence) {
+      showToast("Selecione uma competencia.", "warning");
+      return;
+    }
+    state.globalFilters.competence = competence;
+    state.movementsPage = 1;
+    state.selectedMovementIds.clear();
+    state.selectedMovementItems.clear();
+    await fetchMovements();
+    renderMovements();
+    showToast(`Competencia ${competence} aplicada nas movimentacoes.`, "info");
+  });
   elements.duplicatesTable.addEventListener("click", handleDuplicateTableAction);
   elements.installmentsTable.addEventListener("click", handleInstallmentTableAction);
   elements.counterpartiesTable.addEventListener("click", handleSupplierTableAction);

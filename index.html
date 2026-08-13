@@ -466,11 +466,24 @@
               <h3>Todas as entradas e saidas com categorizacao</h3>
             </div>
             <div class="toolbar-inline">
+              <label class="inline-filter" for="movementsCompetence">
+                <span>Competencia</span>
+                <input type="month" id="movementsCompetence">
+              </label>
+              <button type="button" id="applyMovementsCompetence" class="btn btn-secondary">Aplicar</button>
               <input type="search" id="movementsSearch" class="compact-search" placeholder="Pesquisar descricao, banco, categoria ou fornecedor">
               <button type="button" id="refreshMovementsButton" class="btn btn-secondary">Atualizar</button>
             </div>
           </div>
           <article class="panel">
+            <div class="bulk-actions">
+              <label class="selection-toggle">
+                <input type="checkbox" id="movementsSelectAll">
+                <span>Selecionar itens desta pagina</span>
+              </label>
+              <span id="movementsSelectionLabel" class="selection-count">0 selecionadas</span>
+              <button type="button" id="categorizeSelectedMovements" class="btn btn-primary" disabled>Categorizar selecionadas</button>
+            </div>
             <div id="movementsTable" class="data-region"></div>
             <div class="pagination-row">
               <button type="button" id="movementsPrevPage" class="btn btn-ghost">Pagina anterior</button>
