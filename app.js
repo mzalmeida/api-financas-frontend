@@ -1116,9 +1116,12 @@ function renderMovements() {
   }
 
   const pagination = state.movementsPagination ?? { page: 1, total_pages: 1, total: 0 };
-  elements.movementsPaginationLabel.textContent = `Pagina ${pagination.page} de ${pagination.total_pages} • ${pagination.total} registros`;
-  elements.movementsPrevPage.disabled = pagination.page <= 1;
-  elements.movementsNextPage.disabled = pagination.page >= pagination.total_pages;
+  const currentPage = Math.max(1, Number(pagination.page) || 1);
+  const totalPages = Math.max(1, Number(pagination.total_pages) || 1);
+  const totalRows = Math.max(0, Number(pagination.total) || 0);
+  elements.movementsPaginationLabel.textContent = `Pagina ${currentPage} de ${totalPages} • ${totalRows} registros`;
+  elements.movementsPrevPage.disabled = currentPage <= 1;
+  elements.movementsNextPage.disabled = currentPage >= totalPages;
 }
 
 function renderDuplicates() {
@@ -1132,7 +1135,7 @@ function renderDuplicates() {
     { key: "descricao", label: "Descricao", formatter: (_, row) => row.descricao || row.descricao_normalizada || "-" },
     { key: "banco", label: "Banco", formatter: (value) => value || "-" },
     { key: "conta_nome", label: "Conta", formatter: (value) => value || "-" },
-    { key: "fornecedor", label: "Fornecedor", formatter: (value) => value || "Sem fornecedor" },
+    { key: "fornecedor", label: "Fornecedor", formatter: (_, row) => row.fornecedor || row.contraparte || "Sem fornecedor" },
     { key: "duplicate_rule", label: "Regra", formatter: (value) => duplicateRuleLabel(value) },
     { key: "duplicate_group", label: "Grupo", formatter: (value) => value || "-" },
     { key: "valor", label: "Valor", formatter: formatCurrency },
@@ -1155,53 +1158,45 @@ function renderInstallments() {
     return;
   }
 
-  const rows = state.installments.flatMap((plan) => {
-    const items = Array.isArray(plan.items) ? plan.items : [];
-    if (!items.length) {
-      return [{
-        plan_id: plan.id,
-        item_id: null,
-        description: plan.description || plan.merchant_name || "Parcelamento",
-        supplier_name: plan.counterparty?.display_name || plan.merchant_name || "-",
-        installment: "-",
-        due_date: null,
-        amount: plan.installment_amount,
-        status: plan.status_code,
-        account_name: plan.financial_account?.name || "-",
-      }];
-    }
+  const rows = state.installments.map((plan) => {
+    const items = Array.isArray(plan.items) ? [...plan.items] : [];
+    items.sort((a, b) => String(a.due_date || "").localeCompare(String(b.due_date || "")) || Number(a.installment_number || 0) - Number(b.installment_number || 0));
+    const currentItem = items.find((item) => !["paid", "completed", "cancelled"].includes(String(item.status_code || "").toLowerCase())) || items[items.length - 1] || null;
+    const remainingCount = items.filter((item) => !["paid", "completed", "cancelled"].includes(String(item.status_code || "").toLowerCase())).length;
 
-    return items.map((item) => ({
+    return {
       plan_id: plan.id,
-      item_id: item.id,
-      transaction_id: item.transaction_id || null,
+      item_id: currentItem?.id || "",
+      transaction_id: currentItem?.transaction_id || null,
       description: plan.description || plan.merchant_name || "Parcelamento",
       supplier_name: plan.counterparty?.display_name || plan.merchant_name || "-",
-      installment: `${item.installment_number}/${plan.installment_count}`,
-      due_date: item.due_date,
-      amount: item.amount,
-      status: item.status_code || plan.status_code,
+      current_installment: currentItem ? `${currentItem.installment_number}/${plan.installment_count}` : `0/${plan.installment_count}`,
+      next_due_date: currentItem?.due_date || null,
+      amount: currentItem?.amount ?? plan.installment_amount,
+      remaining_count: remainingCount,
       account_name: plan.financial_account?.name || "-",
-    }));
+      status: currentItem?.status_code || plan.status_code,
+    };
   });
 
   elements.installmentsTable.innerHTML = tableHtml([
     { key: "description", label: "Descricao" },
     { key: "supplier_name", label: "Fornecedor" },
-    { key: "installment", label: "Parcela" },
-    { key: "due_date", label: "Vencimento", formatter: formatDate },
-    { key: "amount", label: "Valor", formatter: formatCurrency },
+    { key: "current_installment", label: "Parcela atual" },
+    { key: "next_due_date", label: "Vencimento atual", formatter: formatDate },
+    { key: "amount", label: "Valor atual", formatter: formatCurrency },
+    { key: "remaining_count", label: "Restantes", formatter: (value) => String(value ?? 0) },
     { key: "account_name", label: "Conta" },
     { key: "status", label: "Status", formatter: (value) => badge(value || "active", value === "completed" ? "success" : value === "cancelled" ? "danger" : "info") },
     {
       key: "actions",
       label: "Acoes",
       formatter: (_, row) => [
-        `<button type="button" class="btn btn-ghost installment-action" data-action="mark-paid" data-plan-id="${row.plan_id}" data-item-id="${row.item_id || ""}">Marcar paga</button>`,
-        `<button type="button" class="btn btn-ghost installment-action" data-action="link" data-plan-id="${row.plan_id}" data-item-id="${row.item_id || ""}">Vincular</button>`,
+        row.item_id ? `<button type="button" class="btn btn-ghost installment-action" data-action="mark-paid" data-plan-id="${row.plan_id}" data-item-id="${row.item_id}">Marcar paga</button>` : "",
+        row.item_id ? `<button type="button" class="btn btn-ghost installment-action" data-action="link" data-plan-id="${row.plan_id}" data-item-id="${row.item_id}">Vincular</button>` : "",
         `<button type="button" class="btn btn-ghost installment-action" data-action="delete-plan" data-plan-id="${row.plan_id}">Excluir</button>`,
         `<button type="button" class="btn btn-ghost installment-action" data-action="cancel-plan" data-plan-id="${row.plan_id}">Cancelar</button>`,
-      ].join(" "),
+      ].filter(Boolean).join(" "),
     },
   ], rows);
 }
@@ -1210,7 +1205,7 @@ function renderSupplierHighlights() {
   if (!elements.supplierHighlights) return;
   const rows = state.suppliers ?? [];
   if (!rows.length) {
-    renderEmpty(elements.supplierHighlights, "Sem fornecedores no periodo", "As despesas agrupadas por fornecedor aparecerao aqui quando houver movimentacao suficiente.");
+    renderEmpty(elements.supplierHighlights, "Sem fornecedores no periodo", "As despesas agrupadas por fornecedor aparecerao aqui quando houver recorrencia no periodo filtrado.");
     return;
   }
 
@@ -1218,8 +1213,8 @@ function renderSupplierHighlights() {
   const totalPurchases = rows.reduce((sum, row) => sum + Number(row.purchase_count ?? 0), 0);
   const cards = [
     ["Maior fornecedor", rows[0]?.supplier_name || "-", `${formatCurrency(rows[0]?.total_spent || 0)} no periodo`],
-    ["Fornecedores consolidados", String(rows.length), `${formatCurrency(totalSpent)} em despesas mapeadas`],
-    ["Compras agrupadas", String(totalPurchases), "Descricao normalizada + cadastro existente"],
+    ["Fornecedores recorrentes", String(rows.length), `${formatCurrency(totalSpent)} em despesas mapeadas`],
+    ["Compras agrupadas", String(totalPurchases), "Apenas fornecedores com mais de um gasto no periodo"],
   ];
 
   elements.supplierHighlights.innerHTML = "";
@@ -1251,12 +1246,15 @@ function renderSuppliers() {
     {
       key: "actions",
       label: "Acoes",
-      formatter: (_, row) => `<button type="button" class="btn btn-ghost supplier-action" data-supplier="${escapeHtml(row.supplier_name)}">Ver gastos</button>`,
+      formatter: (_, row) => [
+        `<button type="button" class="btn btn-ghost supplier-action" data-action="view" data-supplier="${escapeHtml(row.supplier_name)}">Ver gastos</button>`,
+        `<button type="button" class="btn btn-ghost supplier-action" data-action="categorize" data-supplier="${escapeHtml(row.supplier_name)}">Categorizar gastos</button>`,
+      ].join(" "),
     },
   ], state.suppliers);
 
   if (elements.counterpartiesPagination) {
-    elements.counterpartiesPagination.textContent = `${state.suppliers.length} fornecedores consolidados`;
+    elements.counterpartiesPagination.textContent = `${state.suppliers.length} fornecedores recorrentes no periodo`;
   }
 }
 
@@ -1761,54 +1759,98 @@ async function handleCreateAccount(event) {
   }
 }
 
-function buildCategoryPrompt() {
-  return state.catalogs.categories.items
+function buildCategoryPrompt(categories = state.catalogs.categories.items) {
+  return categories
     .map((category, index) => `${index + 1}. ${category.name}`)
     .join("\n");
+}
+
+async function ensureCategoryCatalogLoaded() {
+  const query = new URLSearchParams({ page: "1", pageSize: "100" });
+  const { response, payload } = await apiFetch(`/portal/catalog/categories?${query.toString()}`);
+  if (!response.ok) {
+    throw new Error(payload?.erro || "Falha ao carregar categorias.");
+  }
+  state.catalogs.categories.items = payload.items ?? [];
+  state.catalogs.categories.pagination = payload.pagination ?? { page: 1, total_pages: 1, total: state.catalogs.categories.items.length };
+  return state.catalogs.categories.items;
+}
+
+async function chooseCategoryFor(label) {
+  const categories = await ensureCategoryCatalogLoaded();
+  if (!categories.length) {
+    throw new Error("Nenhuma categoria disponivel para selecao.");
+  }
+
+  const selection = window.prompt(`Informe o numero da categoria para "${label}":\n\n${buildCategoryPrompt(categories)}`);
+  if (!selection) return null;
+
+  const index = Number.parseInt(selection, 10) - 1;
+  const category = categories[index];
+  if (!category?.id) {
+    throw new Error("Categoria invalida.");
+  }
+
+  return category;
+}
+
+async function persistMovementCategory(movementId, categoryId, notes = null) {
+  const { response, payload } = await apiFetch(`/portal/movements/${movementId}`, {
+    method: "PATCH",
+    body: {
+      categoryId,
+      notes,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(payload?.erro || "Nao foi possivel atualizar a movimentacao.");
+  }
+
+  return payload.item ?? null;
+}
+
+async function fetchSupplierMovementsForCategorization(supplierName) {
+  const query = buildGlobalQuery();
+  query.set("creditCardOnly", "true");
+  query.set("search", supplierName);
+  query.set("page", "1");
+  query.set("pageSize", "500");
+
+  const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
+  if (!response.ok) {
+    throw new Error(payload?.erro || "Falha ao carregar as movimentacoes do fornecedor.");
+  }
+
+  const supplierKey = normalizeText(supplierName);
+  return (payload.items ?? []).filter((row) => normalizeText([
+    row.contraparte,
+    row.descricao,
+    row.descricao_normalizada,
+  ].join(" ")).includes(supplierKey));
 }
 
 async function handleMovementTableAction(event) {
   const button = event.target.closest(".movement-action[data-action='categorize']");
   if (!button) return;
 
-  if (!state.catalogs.categories.items.length) {
-    await fetchCatalog("categories", 1);
-  }
-
   const movement = state.movements.find((item) => item.id === button.dataset.id);
   if (!movement) return;
 
-  const selection = window.prompt(`Informe o numero da categoria para "${movement.descricao || movement.descricao_normalizada || "Movimentacao"}":\n\n${buildCategoryPrompt()}`);
-  if (!selection) return;
-
-  const index = Number.parseInt(selection, 10) - 1;
-  const category = state.catalogs.categories.items[index];
-  if (!category?.id) {
-    showToast("Categoria invalida.", "error");
-    return;
-  }
-
-  setLoading(button, true, "Salvando...");
   try {
-    const { response, payload } = await apiFetch(`/portal/movements/${movement.id}`, {
-      method: "PATCH",
-      body: {
-        categoryId: category.id,
-        notes: movement.notes || null,
-      },
-    });
+    const category = await chooseCategoryFor(movement.descricao || movement.descricao_normalizada || "Movimentacao");
+    if (!category) return;
 
-    if (!response.ok) {
-      showToast(payload?.erro || "Nao foi possivel atualizar a movimentacao.", "error");
-      return;
-    }
-
+    setLoading(button, true, "Salvando...");
+    await persistMovementCategory(movement.id, category.id, movement.notes || null);
     await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates(), fetchSuppliers()]);
     renderMovements();
     renderDashboard();
     renderDuplicates();
     renderSuppliers();
-    showToast("Categoria atualizada sem recarregar a pagina.", "success");
+    showToast(`Categoria alterada para ${category.name}.`, "success");
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel atualizar a categoria.", "error");
   } finally {
     setLoading(button, false);
   }
@@ -1818,13 +1860,45 @@ async function handleSupplierTableAction(event) {
   const button = event.target.closest(".supplier-action[data-supplier]");
   if (!button) return;
 
-  state.globalFilters.search = button.dataset.supplier;
-  elements.movementsSearch.value = button.dataset.supplier;
-  state.movementsPage = 1;
-  setActiveSection("movements");
-  await fetchMovements();
-  renderMovements();
-  showToast("Movimentacoes filtradas pelo fornecedor selecionado.", "info");
+  const supplierName = button.dataset.supplier;
+  const action = button.dataset.action || "view";
+
+  if (action === "view") {
+    state.globalFilters.search = supplierName;
+    elements.movementsSearch.value = supplierName;
+    state.movementsPage = 1;
+    setActiveSection("movements");
+    await fetchMovements();
+    renderMovements();
+    showToast("Movimentacoes filtradas pelo fornecedor selecionado.", "info");
+    return;
+  }
+
+  if (action !== "categorize") return;
+
+  try {
+    const category = await chooseCategoryFor(`gastos do fornecedor ${supplierName}`);
+    if (!category) return;
+
+    setLoading(button, true, "Salvando...");
+    const movements = await fetchSupplierMovementsForCategorization(supplierName);
+    if (!movements.length) {
+      showToast("Nenhuma movimentacao encontrada para este fornecedor no periodo atual.", "warning");
+      return;
+    }
+
+    await Promise.all(movements.map((movement) => persistMovementCategory(movement.id, category.id, movement.notes || null)));
+    await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates(), fetchSuppliers()]);
+    renderMovements();
+    renderDashboard();
+    renderDuplicates();
+    renderSuppliers();
+    showToast(`Fornecedor categorizado em lote como ${category.name}.`, "success");
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel categorizar os gastos do fornecedor.", "error");
+  } finally {
+    setLoading(button, false);
+  }
 }
 async function handleDuplicateTableAction(event) {
   const button = event.target.closest(".duplicate-action");
