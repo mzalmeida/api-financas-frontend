@@ -110,3 +110,10 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - `Importacoes recentes` passou a usar status humanizados e contadores `novas`, `duplicadas` e `linhas analisadas`;
 - a responsividade do shell principal foi reforcada com foco em sidebar, topbar, cards e tabelas;
 - a validacao autenticada publicada de 2026-08-04 confirmou `Dashboard`, `Revisoes` e `Fornecedores` funcionando com a nova versao.
+
+## Correcao operacional de categorizacao em lote
+
+- Movimentacoes selecionadas passam a ser categorizadas por uma unica operacao de lote, sem disparar um `PATCH` concorrente por linha.
+- A mesma operacao e reutilizada pela categorizacao de fornecedores.
+- A selecao permanece disponivel quando a API retorna erro, permitindo nova tentativa.
+- O historico visual da tendencia usa alinhamento de rolagem para evitar cards parcialmente cortados apos uma atualizacao.

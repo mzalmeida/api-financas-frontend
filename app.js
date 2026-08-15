@@ -986,7 +986,7 @@ function renderAccountBalances() {
       const card = createNode("article", "row-card");
       const head = createNode("div", "chart-bar-head");
       head.append(createNode("strong", "", row.name), createNode("span", "", formatCurrency(row.current_balance)));
-      card.append(head, createNode("span", "mini-copy", `${row.institution_name || "Sem instituicao"} • ${row.account_type_label || accountTypeLabel(row.account_type)}`));
+      card.append(head, createNode("span", "mini-copy", `${row.institution_name || "Sem instituicao"} â€¢ ${row.account_type_label || accountTypeLabel(row.account_type)}`));
       elements.accountBalanceList.appendChild(card);
     });
 }
@@ -1877,6 +1877,22 @@ async function persistMovementCategory(movementId, categoryId, notes = null) {
   return payload.item ?? null;
 }
 
+async function persistMovementsCategory(movementIds, categoryId) {
+  const { response, payload } = await apiFetch("/portal/movements", {
+    method: "PATCH",
+    body: {
+      movementIds,
+      categoryId,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(payload?.erro || "Nao foi possivel categorizar as movimentacoes selecionadas.");
+  }
+
+  return payload;
+}
+
 async function fetchSupplierMovementsForCategorization(supplierName, supplierKey) {
   const query = buildGlobalQuery();
   query.set("creditCardOnly", "true");
@@ -1909,8 +1925,7 @@ function handleMovementSelectionChange(event) {
 
 async function handleBulkCategorizeMovements() {
   const selectedIds = [...state.selectedMovementIds];
-  const movements = [...state.selectedMovementItems.values()];
-  if (!movements.length) {
+  if (!selectedIds.length) {
     state.selectedMovementIds.clear();
     state.selectedMovementItems.clear();
     renderMovements();
@@ -1918,10 +1933,10 @@ async function handleBulkCategorizeMovements() {
   }
 
   try {
-    const category = await chooseCategoryFor(`${movements.length} movimentacoes selecionadas`);
+    const category = await chooseCategoryFor(`${selectedIds.length} movimentacoes selecionadas`);
     if (!category) return;
     setLoading(elements.categorizeSelectedMovements, true, "Salvando...");
-    await Promise.all(movements.map((movement) => persistMovementCategory(movement.id, category.id, movement.notes || null)));
+    const result = await persistMovementsCategory(selectedIds, category.id);
     state.selectedMovementIds.clear();
     state.selectedMovementItems.clear();
     await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates(), fetchSuppliers()]);
@@ -1929,7 +1944,8 @@ async function handleBulkCategorizeMovements() {
     renderDashboard();
     renderDuplicates();
     renderSuppliers();
-    showToast(`${movements.length} movimentacoes categorizadas como ${category.name}.`, "success");
+    const warning = result.learning_failures > 0 ? " Algumas regras automaticas serao reaprendidas em uma proxima categorizacao." : "";
+    showToast(`${result.updated_count} movimentacoes categorizadas como ${category.name}.${warning}`, result.learning_failures > 0 ? "warning" : "success");
   } catch (error) {
     showToast(error.message || "Nao foi possivel categorizar as movimentacoes selecionadas.", "error");
   } finally {
@@ -1996,7 +2012,7 @@ async function handleBulkCategorizeSuppliers() {
       throw new Error("Nenhuma movimentacao encontrada para os fornecedores selecionados.");
     }
     setLoading(elements.categorizeSelectedSuppliers, true, "Salvando...");
-    await Promise.all(movements.map((movement) => persistMovementCategory(movement.id, category.id, movement.notes || null)));
+    const result = await persistMovementsCategory(movements.map((movement) => movement.id), category.id);
     state.selectedSupplierKeys.clear();
     state.selectedSupplierItems.clear();
     await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates(), fetchSuppliers()]);
@@ -2004,7 +2020,7 @@ async function handleBulkCategorizeSuppliers() {
     renderDashboard();
     renderDuplicates();
     renderSuppliers();
-    showToast(`${movements.length} movimentacoes de ${suppliers.length} fornecedores categorizadas como ${category.name}.`, "success");
+    showToast(`${result.updated_count} movimentacoes de ${suppliers.length} fornecedores categorizadas como ${category.name}.`, "success");
   } catch (error) {
     showToast(error.message || "Nao foi possivel categorizar os fornecedores selecionados.", "error");
   } finally {
@@ -2042,7 +2058,7 @@ async function handleSupplierTableAction(event) {
       return;
     }
 
-    await Promise.all(movements.map((movement) => persistMovementCategory(movement.id, category.id, movement.notes || null)));
+    await persistMovementsCategory(movements.map((movement) => movement.id), category.id);
     await Promise.all([fetchMovements(), fetchOverview(), fetchDuplicates(), fetchSuppliers()]);
     renderMovements();
     renderDashboard();
@@ -3080,7 +3096,6 @@ async function bootstrap() {
 }
 
 bootstrap();
-
 
 
 

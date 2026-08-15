@@ -1866,8 +1866,14 @@ textarea {
   overflow-y: auto;
   overscroll-behavior: contain;
   padding-right: 0.35rem;
+  scroll-padding-block: 0.5rem;
+  scroll-snap-type: y proximity;
   scrollbar-color: #a7adb3 transparent;
   scrollbar-width: thin;
+}
+
+#monthlyTrend .chart-bar {
+  scroll-snap-align: start;
 }
 
 #monthlyTrend::-webkit-scrollbar {
