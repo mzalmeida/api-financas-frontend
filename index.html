@@ -137,12 +137,16 @@
 
       <nav id="mainNav" class="nav-stack" aria-label="Navegacao principal">
         <button type="button" class="nav-item is-active" data-section="dashboard">Dashboard</button>
-        <button type="button" class="nav-item" data-section="imports">Importacoes</button>
-        <button type="button" class="nav-item" data-section="movements">Movimentacoes</button>
+        <div class="nav-group">
+          <button type="button" class="nav-item" data-section="imports">Importacoes</button>
+          <button type="button" class="nav-item nav-subitem" data-section="history">Historico OFX</button>
+        </div>
+        <div class="nav-group">
+          <button type="button" class="nav-item" data-section="movements">Movimentacoes</button>
+          <button type="button" class="nav-item nav-subitem" data-section="categories">Categorias</button>
+        </div>
         <button type="button" class="nav-item" data-section="duplicates">Revisoes</button>
-        <button type="button" class="nav-item" data-section="history">Historico OFX</button>
         <button type="button" class="nav-item" data-section="installments">Parcelamentos</button>
-        <button type="button" class="nav-item" data-section="categories">Categorias</button>
         <button type="button" class="nav-item" data-section="accounts">Contas Financeiras</button>
         <button type="button" class="nav-item" data-section="suppliers">Fornecedores</button>
         <button type="button" class="nav-item" data-section="settings">Configuracoes</button>

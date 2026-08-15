@@ -438,6 +438,31 @@ input[readonly] {
   gap: 0.55rem;
 }
 
+.nav-group {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.nav-subitem {
+  min-height: 2.35rem;
+  margin-left: 0.9rem;
+  width: calc(100% - 0.9rem);
+  padding: 0.65rem 0.85rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.nav-subitem::before {
+  content: "";
+  display: inline-block;
+  width: 0.35rem;
+  height: 0.35rem;
+  margin-right: 0.55rem;
+  border-radius: 999px;
+  background: currentColor;
+  vertical-align: middle;
+}
+
 .nav-item {
   width: 100%;
   min-height: 3rem;
