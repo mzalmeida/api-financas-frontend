@@ -1002,7 +1002,7 @@ function renderCardBillSummary() {
   (summary.cards ?? []).forEach((row) => {
     const card = createNode("article", "row-card");
     card.appendChild(createNode("strong", "", row.name));
-    card.appendChild(createNode("span", "mini-copy", `Valor ${formatCurrency(row.statement_amount ?? row.open_amount)}`));
+    card.appendChild(createNode("span", "mini-copy", `Valor ${formatCurrency(row.open_amount ?? row.statement_amount)}`));
     card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.next_due_date)} - Limite ${row.credit_limit_amount ? formatCurrency(row.credit_limit_amount) : "nao informado"}`));
     elements.cardBillSummary.appendChild(card);
   });
