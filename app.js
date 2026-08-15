@@ -865,8 +865,8 @@ function renderStats() {
   }
 
   elements.statsGrid.replaceChildren(...[
-    ["Saldo geral", formatCurrency(metrics.overall_balance), "Saldo somado entre as contas com dinheiro disponivel"],
-    ["Receitas x despesas", `${formatCurrency(metrics.monthly_income)} / ${formatCurrency(metrics.monthly_expense)}`, "Entradas e saidas na competencia ativa"],
+    ["Saldo geral", formatCurrency(metrics.overall_balance), "Saldos atuais informados pelos ultimos OFX"],
+    ["Entradas x saidas - Inter", `${formatCurrency(metrics.monthly_income)} / ${formatCurrency(metrics.monthly_expense)}`, "Todas as movimentacoes do Inter na competencia ativa"],
     ["Ultima importacao", formatDateTime(metrics.latest_import_at), "Historico OFX mais recente"],
   ].map(([label, value, support]) => {
     const card = createNode("article", "stat-card");
@@ -2471,6 +2471,8 @@ async function verifyStoredSession() {
     await ensureSession();
     const { response } = await apiFetch("/auth/me");
     if (!response.ok) throw new Error("invalid_session");
+    await fetchProfile();
+    syncSettingsForm();
     showAppShell();
     setActiveSection("dashboard");
     await refreshAllData();
@@ -2505,6 +2507,8 @@ async function handleLogin(event) {
     }
 
     elements.loginForm.reset();
+    await fetchProfile();
+    syncSettingsForm();
     showAppShell();
     setActiveSection("dashboard");
     await refreshAllData();
