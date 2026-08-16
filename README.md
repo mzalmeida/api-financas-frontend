@@ -125,3 +125,4 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - Celulares usam uma coluna, tablets usam ate duas colunas e computadores distribuem registros operacionais em ate tres colunas.
 - O layout responsivo elimina larguras minimas inadequadas e bloqueia estouro horizontal da pagina.
 - Historico OFX, Movimentacoes, Revisoes, Parcelamentos e Fornecedores usam cartoes responsivos permanentes: tres colunas no computador, duas no tablet e uma no celular.
+- Parcelamentos usam cartoes-resumo compactos, com parcela e valor em destaque, vencimento, saldo restante, conta, status e acoes em hierarquia visual propria.
