@@ -704,6 +704,7 @@ async function apiFetch(pathname, options = {}) {
     method,
     headers: requestHeaders,
     body: body === undefined ? undefined : body instanceof FormData ? body : JSON.stringify(body),
+    cache: method === "GET" ? "no-store" : "default",
   });
 
   if (response.status === 401 && auth && retryOnUnauthorized && state.session?.refresh_token) {
@@ -3099,7 +3100,6 @@ async function bootstrap() {
 }
 
 bootstrap();
-
 
 
 
