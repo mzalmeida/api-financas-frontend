@@ -120,6 +120,7 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 
 ## Responsividade operacional para celular
 
-- Tabelas de movimentacoes, fornecedores, historico, parcelamentos e cadastros passam a ser apresentadas como cartoes rotulados em telas pequenas.
+- Tabelas de movimentacoes, fornecedores, historico, parcelamentos e cadastros passam a ser apresentadas como cartoes rotulados em celulares e tablets.
 - Cabecalho, competencia, filtros, selecao em lote, paginacao, menu lateral e drawers foram compactados para uso por toque.
-- O layout mobile elimina larguras minimas de desktop e bloqueia estouro horizontal da pagina.
+- Celulares usam uma coluna, tablets usam ate duas colunas e computadores preservam as tabelas completas.
+- O layout responsivo elimina larguras minimas inadequadas e bloqueia estouro horizontal da pagina.

@@ -2549,3 +2549,108 @@ html {
     grid-column: auto;
   }
 }
+
+/* Wide data adapts independently from the navigation breakpoint. */
+@media (max-width: 1100px) {
+  .data-region,
+  .table-wrap {
+    width: 100%;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .data-region > table,
+  .table-wrap > table {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    background: transparent;
+  }
+
+  .data-region > table thead,
+  .table-wrap > table thead {
+    display: none;
+  }
+
+  .data-region > table tbody,
+  .table-wrap > table tbody {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    width: 100%;
+  }
+
+  .data-region > table tr,
+  .table-wrap > table tr {
+    display: grid;
+    width: 100%;
+    min-width: 0;
+    padding: 0.25rem 0.75rem;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow: 0 5px 14px rgba(35, 40, 45, 0.05);
+  }
+
+  .data-region > table td,
+  .table-wrap > table td {
+    display: grid;
+    grid-template-columns: minmax(6.5rem, 36%) minmax(0, 1fr);
+    gap: 0.65rem;
+    align-items: start;
+    width: 100%;
+    min-width: 0;
+    padding: 0.68rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.91rem;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .data-region > table td:last-child,
+  .table-wrap > table td:last-child {
+    border-bottom: 0;
+  }
+
+  .data-region > table td::before,
+  .table-wrap > table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.07em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .data-region > table td[data-label="Selecionar"],
+  .table-wrap > table td[data-label="Selecionar"] {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+  }
+
+  .data-region > table td input[type="checkbox"],
+  .table-wrap > table td input[type="checkbox"] {
+    width: 1.45rem;
+    min-width: 1.45rem;
+    min-height: 1.45rem;
+    margin: 0;
+  }
+
+  .data-region > table td .btn,
+  .table-wrap > table td .btn {
+    width: 100%;
+    min-height: 2.55rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .data-region > table tbody,
+  .table-wrap > table tbody {
+    grid-template-columns: 1fr;
+  }
+}
