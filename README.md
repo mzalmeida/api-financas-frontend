@@ -122,5 +122,6 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 
 - Tabelas de movimentacoes, fornecedores, historico, parcelamentos e cadastros passam a ser apresentadas como cartoes rotulados em celulares e tablets.
 - Cabecalho, competencia, filtros, selecao em lote, paginacao, menu lateral e drawers foram compactados para uso por toque.
-- Celulares usam uma coluna, tablets usam ate duas colunas e computadores preservam as tabelas completas.
+- Celulares usam uma coluna, tablets usam ate duas colunas e computadores distribuem registros operacionais em ate tres colunas.
 - O layout responsivo elimina larguras minimas inadequadas e bloqueia estouro horizontal da pagina.
+- Historico OFX, Movimentacoes, Revisoes, Parcelamentos e Fornecedores usam cartoes responsivos permanentes: tres colunas no computador, duas no tablet e uma no celular.

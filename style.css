@@ -2654,3 +2654,100 @@ html {
     grid-template-columns: 1fr;
   }
 }
+
+/* Operational records stay readable even inside narrow desktop work areas. */
+.responsive-records {
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+}
+
+.responsive-records > table {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+}
+
+.responsive-records > table thead {
+  display: none;
+}
+
+.responsive-records > table tbody {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  width: 100%;
+}
+
+.responsive-records > table tr {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  padding: 0.25rem 0.8rem;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 5px 14px rgba(35, 40, 45, 0.05);
+}
+
+.responsive-records > table td {
+  display: grid;
+  grid-template-columns: minmax(6.25rem, 38%) minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+  width: 100%;
+  min-width: 0;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.responsive-records > table td:last-child {
+  border-bottom: 0;
+}
+
+.responsive-records > table td::before {
+  content: attr(data-label);
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.07em;
+  line-height: 1.3;
+  text-transform: uppercase;
+}
+
+.responsive-records > table td[data-label="Selecionar"] {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+}
+
+.responsive-records > table td input[type="checkbox"] {
+  width: 1.4rem;
+  min-width: 1.4rem;
+  min-height: 1.4rem;
+  margin: 0;
+}
+
+.responsive-records > table td .btn {
+  width: 100%;
+  min-height: 2.5rem;
+}
+
+@media (max-width: 1100px) {
+  .responsive-records > table tbody {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .responsive-records > table tbody {
+    grid-template-columns: 1fr;
+  }
+}
