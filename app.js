@@ -1529,7 +1529,7 @@ function tableHtml(columns, rows) {
         : typeof raw === "string" && (raw.includes("<button") || raw.includes("<input") || raw.includes("<select"))
           ? raw
           : escapeHtml(raw);
-      return `<td>${content}</td>`;
+      return `<td data-label="${escapeHtml(column.label)}">${content}</td>`;
     }).join("");
     return `<tr>${cells}</tr>`;
   }).join("");
@@ -3096,7 +3096,6 @@ async function bootstrap() {
 }
 
 bootstrap();
-
 
 
 

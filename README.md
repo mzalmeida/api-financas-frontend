@@ -117,3 +117,9 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - A mesma operacao e reutilizada pela categorizacao de fornecedores.
 - A selecao permanece disponivel quando a API retorna erro, permitindo nova tentativa.
 - O historico visual da tendencia usa alinhamento de rolagem para evitar cards parcialmente cortados apos uma atualizacao.
+
+## Responsividade operacional para celular
+
+- Tabelas de movimentacoes, fornecedores, historico, parcelamentos e cadastros passam a ser apresentadas como cartoes rotulados em telas pequenas.
+- Cabecalho, competencia, filtros, selecao em lote, paginacao, menu lateral e drawers foram compactados para uso por toque.
+- O layout mobile elimina larguras minimas de desktop e bloqueia estouro horizontal da pagina.
