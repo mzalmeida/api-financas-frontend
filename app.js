@@ -562,6 +562,7 @@ function showResetPassword(context) {
 function showAppShell() {
   elements.authShell.classList.add("hidden");
   elements.appShell.classList.remove("hidden");
+  applyMenuVisibility(state.profile?.settings?.dashboard_preferences?.hidden_sections ?? []);
   elements.sessionInfo.textContent = state.session?.user?.email || "Sessao ativa";
   syncSessionIdentity();
 }
@@ -923,7 +924,9 @@ function renderBarSeries(target, rows, valueKeys, formatter) {
 function renderDashboard() {
   renderGlobalFilterOptions();
   renderStats();
-  renderBarSeries(elements.monthlyTrend, state.overview?.monthly_trend ?? [], ["income", "expense"], () => "");
+  const monthlyTrend = [...(state.overview?.monthly_trend ?? [])]
+    .sort((left, right) => String(right.month ?? "").localeCompare(String(left.month ?? "")));
+  renderBarSeries(elements.monthlyTrend, monthlyTrend, ["income", "expense"], () => "");
   renderBarSeries(elements.categorySummary, state.overview?.category_summary ?? [], ["total"], (value) => formatCurrency(value));
   renderAccountBalances();
   renderCardBillSummary();
@@ -3096,7 +3099,6 @@ async function bootstrap() {
 }
 
 bootstrap();
-
 
 
 
