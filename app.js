@@ -794,7 +794,6 @@ async function fetchImportOptions() {
 async function fetchMovements() {
   const query = buildGlobalQuery();
   query.set("page", String(state.movementsPage || 1));
-  query.set("allPeriod", "true");
   query.set("pageSize", "25");
   if (state.globalFilters.search) {
     query.set("search", state.globalFilters.search);
@@ -1882,35 +1881,55 @@ async function persistMovementCategory(movementId, categoryId, notes = null) {
 }
 
 async function persistMovementsCategory(movementIds, categoryId) {
-  const { response, payload } = await apiFetch("/portal/movements", {
-    method: "PATCH",
-    body: {
-      movementIds,
-      categoryId,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(payload?.erro || "Nao foi possivel categorizar as movimentacoes selecionadas.");
+  const uniqueIds = [...new Set(movementIds.filter(Boolean))];
+  const batches = [];
+  for (let index = 0; index < uniqueIds.length; index += 500) {
+    batches.push(uniqueIds.slice(index, index + 500));
   }
 
-  return payload;
+  const result = { updated_count: 0, learned_rules: 0, learning_failures: 0 };
+  for (const batch of batches) {
+    const { response, payload } = await apiFetch("/portal/movements", {
+      method: "PATCH",
+      body: {
+        movementIds: batch,
+        categoryId,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(payload?.erro || "Nao foi possivel categorizar as movimentacoes selecionadas.");
+    }
+
+    result.updated_count += Number(payload.updated_count || 0);
+    result.learned_rules += Number(payload.learned_rules || 0);
+    result.learning_failures += Number(payload.learning_failures || 0);
+  }
+
+  return result;
 }
 
-async function fetchSupplierMovementsForCategorization(supplierName, supplierKey) {
+async function fetchSupplierMovementsForCategorization(supplierKey) {
   const query = buildGlobalQuery();
   query.set("creditCardOnly", "true");
-  query.set("allPeriod", "true");
   query.set("supplierKey", supplierKey);
-  query.set("search", supplierName);
-  query.set("page", "1");
-  query.set("pageSize", "1000");
+  query.set("pageSize", "500");
 
-  const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
-  if (!response.ok) {
-    throw new Error(payload?.erro || "Falha ao carregar as movimentacoes do fornecedor.");
-  }
-  return payload.items ?? [];
+  const items = [];
+  let page = 1;
+  let totalPages = 1;
+  do {
+    query.set("page", String(page));
+    const { response, payload } = await apiFetch(`/portal/movements?${query.toString()}`);
+    if (!response.ok) {
+      throw new Error(payload?.erro || "Falha ao carregar as movimentacoes do fornecedor.");
+    }
+    items.push(...(payload.items ?? []));
+    totalPages = Math.max(1, Number(payload.pagination?.total_pages) || 1);
+    page += 1;
+  } while (page <= totalPages);
+
+  return items;
 }
 
 function handleMovementSelectionChange(event) {
@@ -2010,7 +2029,7 @@ async function handleBulkCategorizeSuppliers() {
     const category = await chooseCategoryFor(`${suppliers.length} fornecedores selecionados`);
     if (!category) return;
     setLoading(elements.categorizeSelectedSuppliers, true, "Carregando gastos...");
-    const batches = await Promise.all(suppliers.map((supplier) => fetchSupplierMovementsForCategorization(supplier.supplier_name, supplier.supplier_key)));
+    const batches = await Promise.all(suppliers.map((supplier) => fetchSupplierMovementsForCategorization(supplier.supplier_key)));
     const movements = [...new Map(batches.flat().filter((movement) => movement?.id).map((movement) => [movement.id, movement])).values()];
     if (!movements.length) {
       throw new Error("Nenhuma movimentacao encontrada para os fornecedores selecionados.");
@@ -2039,9 +2058,12 @@ async function handleSupplierTableAction(event) {
   const action = button.dataset.action || "view";
 
   if (action === "view") {
-    state.globalFilters.search = supplierName;
-    elements.movementsSearch.value = supplierName;
+    state.globalFilters.supplierKey = supplierKey;
+    state.globalFilters.search = "";
+    elements.movementsSearch.value = "";
     state.movementsPage = 1;
+    state.selectedMovementIds.clear();
+    state.selectedMovementItems.clear();
     setActiveSection("movements");
     await fetchMovements();
     renderMovements();
@@ -2056,7 +2078,7 @@ async function handleSupplierTableAction(event) {
     if (!category) return;
 
     setLoading(button, true, "Salvando...");
-    const movements = await fetchSupplierMovementsForCategorization(supplierName, supplierKey);
+    const movements = await fetchSupplierMovementsForCategorization(supplierKey);
     if (!movements.length) {
       showToast("Nenhuma movimentacao encontrada para este fornecedor no periodo atual.", "warning");
       return;
@@ -2940,8 +2962,13 @@ function registerEventHandlers() {
     state.globalFilters.financialAccountId = elements.filterAccount.value;
     state.globalFilters.movementType = elements.filterType.value;
     state.globalFilters.category = elements.filterCategory.value;
+    state.globalFilters.supplierKey = "";
     state.globalFilters.search = elements.movementsSearch.value.trim();
     state.movementsPage = 1;
+    state.selectedMovementIds.clear();
+    state.selectedMovementItems.clear();
+    state.selectedSupplierKeys.clear();
+    state.selectedSupplierItems.clear();
     await refreshAllData();
     showToast("Filtros aplicados.", "info");
   });
@@ -2973,6 +3000,9 @@ function registerEventHandlers() {
     try {
       state.movementsPage = 1;
       state.globalFilters.search = elements.movementsSearch.value.trim();
+      state.globalFilters.supplierKey = "";
+      state.selectedMovementIds.clear();
+      state.selectedMovementItems.clear();
       await fetchMovements();
       renderMovements();
       showToast("Movimentacoes atualizadas.", "info");
@@ -3007,6 +3037,8 @@ function registerEventHandlers() {
       const input = document.getElementById(config.searchId);
       input?.addEventListener("input", async () => {
         if (entityName === "counterparties" && state.activeSection === "suppliers") {
+          state.selectedSupplierKeys.clear();
+          state.selectedSupplierItems.clear();
           await fetchSuppliers();
           renderSuppliers();
           return;
@@ -3100,8 +3132,6 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-
 
 
 

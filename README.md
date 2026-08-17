@@ -127,4 +127,5 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - Historico OFX, Movimentacoes, Revisoes, Parcelamentos e Fornecedores usam cartoes responsivos permanentes: tres colunas no computador, duas no tablet e uma no celular.
 - A tendencia mensal do dashboard e exibida da competencia mais recente para a mais antiga; as preferencias de abas ocultas sao reaplicadas antes da exibicao do portal, e a tela de acesso foi simplificada sem os cards institucionais.
 - As consultas autenticadas usam politica `no-store`, e o versionamento do `app.js` invalida caches anteriores para aplicar imediatamente as preferencias de visibilidade do menu.
+- Movimentacoes e Fornecedores respeitam a competencia ativa; a categorizacao em lote elimina selecoes antigas, usa a chave exata do fornecedor e divide atualizacoes extensas em blocos de ate 500 itens.
 - Parcelamentos usam cartoes-resumo compactos, com parcela e valor em destaque, vencimento, saldo restante, conta, status e acoes em hierarquia visual propria.
