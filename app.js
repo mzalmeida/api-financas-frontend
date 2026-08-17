@@ -1002,18 +1002,41 @@ function renderCardBillSummary() {
   }
 
   elements.cardBillSummary.replaceChildren();
+  const appendBillingPeriod = (card, label, period, limitAmount = null) => {
+    if (!period || Number(period.open_amount ?? period.amount ?? 0) <= 0) return;
+    const status = period.billing_status === "paid" ? "paid" : "pending";
+    const block = createNode("div", `billing-period is-${status}`);
+    const head = createNode("div", "billing-period-head");
+    head.append(
+      createNode("span", "billing-period-label", label),
+      createNode("span", `status-badge ${status === "paid" ? "success" : "warning"}`, status === "paid" ? "Paga" : "Pendente"),
+    );
+    const amount = period.open_amount ?? period.statement_amount ?? period.amount;
+    block.append(
+      head,
+      createNode("strong", "billing-amount", formatCurrency(amount)),
+      createNode("span", "mini-copy", `Vencimento ${formatDate(period.next_due_date ?? period.due_date)}`),
+    );
+    if (status === "paid" && period.payment_date) {
+      block.appendChild(createNode("span", "mini-copy", `Pagamento identificado em ${formatDate(period.payment_date)}`));
+    } else if (limitAmount) {
+      block.appendChild(createNode("span", "mini-copy", `Limite ${formatCurrency(limitAmount)}`));
+    }
+    card.appendChild(block);
+  };
+
   (summary.cards ?? []).forEach((row) => {
-    const card = createNode("article", "row-card");
+    const card = createNode("article", "row-card billing-card");
     card.appendChild(createNode("strong", "", row.name));
-    card.appendChild(createNode("span", "mini-copy", `Valor ${formatCurrency(row.open_amount ?? row.statement_amount)}`));
-    card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.next_due_date)} - Limite ${row.credit_limit_amount ? formatCurrency(row.credit_limit_amount) : "nao informado"}`));
+    appendBillingPeriod(card, "Fatura atual", row.current_statement ?? row, row.credit_limit_amount);
+    appendBillingPeriod(card, "Proxima fatura", row.next_statement, row.credit_limit_amount);
     elements.cardBillSummary.appendChild(card);
   });
   (summary.commitments ?? []).forEach((row) => {
-    const card = createNode("article", "row-card");
+    const card = createNode("article", "row-card billing-card");
     card.appendChild(createNode("strong", "", row.name));
-    card.appendChild(createNode("span", "mini-copy", `Valor ${formatCurrency(row.amount)}`));
-    card.appendChild(createNode("span", "mini-copy", `Vencimento ${formatDate(row.due_date)}`));
+    appendBillingPeriod(card, "Compromisso atual", row.current_statement ?? row);
+    appendBillingPeriod(card, "Proximo compromisso", row.next_statement);
     elements.cardBillSummary.appendChild(card);
   });
 }
@@ -3132,7 +3155,6 @@ async function bootstrap() {
 }
 
 bootstrap();
-
 
 
 
