@@ -815,7 +815,6 @@ async function fetchDuplicates() {
 async function fetchSuppliers() {
   const query = buildGlobalQuery();
   const search = elements.suppliersSearch?.value?.trim();
-  query.set("creditCardOnly", "true");
   if (search) query.set("search", search);
   const { response, payload } = await apiFetch(`/portal/suppliers?${query.toString()}`);
   if (!response.ok) throw new Error(payload?.erro || "Falha ao carregar fornecedores.");
@@ -1315,6 +1314,9 @@ function renderSuppliers() {
   renderSupplierHighlights();
   if (!state.suppliers.length) {
     renderEmpty(elements.counterpartiesTable, "Nenhum fornecedor encontrado", "Ajuste os filtros globais ou importe novas despesas para montar a analise do periodo.");
+    if (elements.counterpartiesPagination) {
+      elements.counterpartiesPagination.textContent = "0 fornecedores recorrentes no periodo";
+    }
     return;
   }
 
@@ -1934,7 +1936,6 @@ async function persistMovementsCategory(movementIds, categoryId) {
 
 async function fetchSupplierMovementsForCategorization(supplierKey) {
   const query = buildGlobalQuery();
-  query.set("creditCardOnly", "true");
   query.set("supplierKey", supplierKey);
   query.set("pageSize", "500");
 
@@ -3155,7 +3156,6 @@ async function bootstrap() {
 }
 
 bootstrap();
-
 
 
 
