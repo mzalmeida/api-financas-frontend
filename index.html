@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://esm.sh; connect-src 'self' https://api-financas-backend1.onrender.com https://gbnzacdsxsivwwsquxky.supabase.co wss://gbnzacdsxsivwwsquxky.supabase.co; style-src 'self' https://fonts.googleapis.com; style-src-attr 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
   <title>RebeccaCash</title>
   <meta name="description" content="RebeccaCash e o seu software SaaS de controle financeiro pessoal com dashboard, importacoes OFX e operacao segura.">
   <meta name="theme-color" content="#F8FAFC">
@@ -13,8 +14,8 @@
   <link rel="icon" type="image/png" sizes="16x16" href="assets/brand/favicon-16x16.png">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/brand/favicon-32x32.png">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/brand/apple-touch-icon.png">
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="style.css?v=20260816-installments-v1">
+  <link rel="manifest" href="manifest.webmanifest?v=20260823-cache-v1">
+  <link rel="stylesheet" href="style.css?v=20260823-cache-v1">
 </head>
 <body>
   <div class="ambient-bg" aria-hidden="true">
@@ -464,6 +465,7 @@
               </label>
               <span id="movementsSelectionLabel" class="selection-count">0 selecionadas</span>
               <button type="button" id="categorizeSelectedMovements" class="btn btn-primary" disabled>Categorizar selecionadas</button>
+              <button type="button" id="identifySelectedMovements" class="btn btn-ghost" disabled>Identificar fornecedor</button>
             </div>
             <div id="movementsTable" class="data-region responsive-records"></div>
             <div class="pagination-row">
@@ -813,6 +815,6 @@
 
   <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-  <script type="module" src="app.js?v=20260817-supplier-filters-v1"></script>
+  <script type="module" src="app.js?v=20260823-cache-v1"></script>
 </body>
 </html>

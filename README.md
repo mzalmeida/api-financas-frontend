@@ -45,6 +45,18 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - apenas `SUPABASE_URL` e `SUPABASE_ANON_KEY` podem ser expostos para o fluxo restrito de recuperacao;
 - apenas mensagens de erro genericas devem aparecer para o usuario;
 - `indexantg.html` permanece somente como legado de referencia e nao como fluxo oficial.
+- a versao do `supabase-js` esta fixada e o cliente de recovery nao duplica persistencia de sessao;
+- a CSP restringe scripts, conexoes, fontes, imagens, formularios e objetos aos recursos necessarios;
+- dados da API sao escapados por padrao, e HTML e permitido apenas em colunas internas explicitamente marcadas;
+- respostas financeiras autenticadas usam `no-store`, e o logout/recovery limpam sessao e URL de autenticacao.
+
+## Atualizacao automatica do portal
+
+- `version.json` identifica a versao publicada sem depender da sessao do usuario;
+- o portal verifica uma nova versao ao abrir, recuperar foco, voltar do segundo plano e a cada cinco minutos;
+- quando encontra versao diferente, recarrega uma unica vez com cache buster e preserva a sessao em `localStorage`;
+- `APP_BUILD_VERSION`, `version.json` e as versoes de `app.js`/`style.css` devem ser atualizados juntos em cada publicacao;
+- no Render, `/`, `/index.html`, `/version.json`, `/app.js`, `/style.css` e `/manifest.webmanifest` devem usar `Cache-Control: no-cache, no-store, must-revalidate` enquanto os assets nao tiverem nomes com hash.
 
 ## Estado local da F04-E01
 
@@ -117,6 +129,8 @@ O arquivo `app.js` escolhe a URL local automaticamente em `localhost` e a URL pu
 - A mesma operacao e reutilizada pela categorizacao de fornecedores.
 - A selecao permanece disponivel quando a API retorna erro, permitindo nova tentativa.
 - O historico visual da tendencia usa alinhamento de rolagem para evitar cards parcialmente cortados apos uma atualizacao.
+- Movimentacoes selecionadas podem receber um nome amigavel de fornecedor em lote.
+- Movimentacoes e fornecedores recorrentes exibem a acao `Nome amigavel`; a escolha e reaproveitada automaticamente nas proximas importacoes pelo backend.
 
 ## Responsividade operacional para celular
 

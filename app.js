@@ -1,9 +1,11 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 
 const APP_NAME = "RebeccaCash";
+const APP_BUILD_VERSION = "2026.08.23.2";
+const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const STORAGE_KEY = "rebeccacash.session";
 const RECOVERY_CONTEXT_KEY = "rebeccacash.recovery";
-const SUPABASE_RECOVERY_STORAGE_KEY = "rebeccacash.supabase.recovery";
+const LEGACY_SUPABASE_STORAGE_KEY = "rebeccacash.supabase.recovery";
 const PUBLIC_BACKEND_URL = "https://api-financas-backend1.onrender.com";
 const PUBLIC_FRONTEND_URL = "https://api-financas-frontend.onrender.com";
 const LOCAL_BACKEND_URL = "http://127.0.0.1:3000";
@@ -13,6 +15,46 @@ const PASSWORD_MIN_LENGTH = 8;
 const DEFAULT_THEME = "rebecca";
 const CATALOG_PAGE_SIZE = 10;
 const HISTORY_PAGE_SIZE = 8;
+
+let versionCheckInFlight = false;
+
+async function checkForPortalUpdate() {
+  if (versionCheckInFlight) return;
+  versionCheckInFlight = true;
+
+  try {
+    const response = await fetch(`/version.json?ts=${Date.now()}`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return;
+
+    const remoteVersion = String((await response.json())?.version || "").trim();
+    if (!remoteVersion || remoteVersion === APP_BUILD_VERSION) return;
+
+    const reloadKey = `rebeccacash.version-reload.${remoteVersion}`;
+    const previousReloadAt = Number(sessionStorage.getItem(reloadKey) || 0);
+    if (Date.now() - previousReloadAt < 60 * 1000) return;
+    sessionStorage.setItem(reloadKey, String(Date.now()));
+
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("_version", remoteVersion);
+    window.location.replace(nextUrl.toString());
+  } catch {
+    // Falha de verificacao nao interrompe o uso do portal offline ou instavel.
+  } finally {
+    versionCheckInFlight = false;
+  }
+}
+
+function startVersionMonitoring() {
+  window.addEventListener("focus", checkForPortalUpdate);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") checkForPortalUpdate();
+  });
+  window.setInterval(checkForPortalUpdate, VERSION_CHECK_INTERVAL_MS);
+  checkForPortalUpdate();
+}
 
 const SECTION_TITLES = {
   dashboard: "Dashboard",
@@ -46,7 +88,7 @@ const ENTITY_CONFIG = {
       { key: "name", label: "Nome" },
       { key: "movement_type", label: "Tipo", formatter: (value) => movementTypeLabel(value) },
       { key: "color_hex", label: "Cor" },
-      { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
+      { key: "is_active", label: "Status", allowHtml: true, formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
     ],
   },
   accounts: {
@@ -70,7 +112,7 @@ const ENTITY_CONFIG = {
       { key: "account_type", label: "Tipo", formatter: (value) => accountTypeLabel(value) },
       { key: "statement_due_day", label: "Vencimento" },
       { key: "currency_code", label: "Moeda" },
-      { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
+      { key: "is_active", label: "Status", allowHtml: true, formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
     ],
   },
   cards: {
@@ -94,7 +136,7 @@ const ENTITY_CONFIG = {
       { key: "brand", label: "Bandeira" },
       { key: "last_four_digits", label: "Final" },
       { key: "statement_due_day", label: "Vencimento" },
-      { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativo", "success") : badge("Inativo", "warning") },
+      { key: "is_active", label: "Status", allowHtml: true, formatter: (value) => value ? badge("Ativo", "success") : badge("Inativo", "warning") },
     ],
   },
   counterparties: {
@@ -131,7 +173,7 @@ const ENTITY_CONFIG = {
       { key: "name", label: "Instituicao" },
       { key: "institution_type", label: "Tipo" },
       { key: "country_code", label: "Pais" },
-      { key: "is_active", label: "Status", formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
+      { key: "is_active", label: "Status", allowHtml: true, formatter: (value) => value ? badge("Ativa", "success") : badge("Inativa", "warning") },
     ],
   },
 };
@@ -156,10 +198,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: false,
     detectSessionInUrl: true,
-    persistSession: true,
-    storageKey: SUPABASE_RECOVERY_STORAGE_KEY,
+    persistSession: false,
   },
 });
+localStorage.removeItem(LEGACY_SUPABASE_STORAGE_KEY);
 
 const elements = {
   authShell: document.getElementById("authShell"),
@@ -254,6 +296,7 @@ const elements = {
   movementsSelectAll: document.getElementById("movementsSelectAll"),
   movementsSelectionLabel: document.getElementById("movementsSelectionLabel"),
   categorizeSelectedMovements: document.getElementById("categorizeSelectedMovements"),
+  identifySelectedMovements: document.getElementById("identifySelectedMovements"),
   refreshMovementsButton: document.getElementById("refreshMovementsButton"),
   movementsTable: document.getElementById("movementsTable"),
   movementsPrevPage: document.getElementById("movementsPrevPage"),
@@ -476,6 +519,7 @@ async function storeSession(session) {
 async function clearSession() {
   state.session = null;
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(LEGACY_SUPABASE_STORAGE_KEY);
   await supabase.auth.signOut().catch(() => null);
 }
 
@@ -518,8 +562,8 @@ function setLoading(button, isLoading, loadingText = "Carregando...") {
 }
 
 function clearAuthRedirectFromUrl() {
-  if (window.location.hash) {
-    history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+  if (window.location.hash || window.location.search) {
+    history.replaceState(null, "", window.location.pathname);
   }
 }
 
@@ -1155,7 +1199,7 @@ function renderMovements() {
     renderEmpty(elements.movementsTable, "Nenhuma movimentacao encontrada", "Ajuste os filtros globais ou importe novos arquivos OFX para preencher esta tela.");
   } else {
     elements.movementsTable.innerHTML = tableHtml([
-      { key: "selection", label: "Selecionar", formatter: (_, row) => `<input type="checkbox" class="movement-select" data-id="${row.id}" ${state.selectedMovementIds.has(row.id) ? "checked" : ""} aria-label="Selecionar movimentacao">` },
+      { key: "selection", label: "Selecionar", allowHtml: true, formatter: (_, row) => `<input type="checkbox" class="movement-select" data-id="${escapeHtml(row.id)}" ${state.selectedMovementIds.has(row.id) ? "checked" : ""} aria-label="Selecionar movimentacao">` },
       { key: "data", label: "Data", formatter: formatDate },
       { key: "descricao", label: "Descricao", formatter: (_, row) => row.descricao || row.descricao_normalizada || "-" },
       { key: "banco", label: "Banco", formatter: (value) => value || "-" },
@@ -1163,12 +1207,16 @@ function renderMovements() {
       { key: "tipo_conta_label", label: "Origem", formatter: (value) => value || "-" },
       { key: "categoria", label: "Categoria", formatter: (value) => value || "Sem categoria" },
       { key: "contraparte", label: "Fornecedor", formatter: (value) => value || "-" },
-      { key: "tipo_movimento", label: "Tipo", formatter: (value) => badge(movementTypeLabel(value || "adjustment"), movementTone(value)) },
+      { key: "tipo_movimento", label: "Tipo", allowHtml: true, formatter: (value) => badge(movementTypeLabel(value || "adjustment"), movementTone(value)) },
       { key: "valor", label: "Valor", formatter: formatCurrency },
       {
         key: "actions",
         label: "Acoes",
-        formatter: (_, row) => `<button type="button" class="btn btn-ghost movement-action" data-action="categorize" data-id="${row.id}">Categorizar</button>`,
+        allowHtml: true,
+        formatter: (_, row) => [
+          `<button type="button" class="btn btn-ghost movement-action" data-action="categorize" data-id="${escapeHtml(row.id)}">Categorizar</button>`,
+          `<button type="button" class="btn btn-ghost movement-action" data-action="identify" data-id="${escapeHtml(row.id)}">Nome amigavel</button>`,
+        ].join(" "),
       },
     ], state.movements);
   }
@@ -1192,6 +1240,9 @@ function renderMovements() {
   if (elements.categorizeSelectedMovements) {
     elements.categorizeSelectedMovements.disabled = state.selectedMovementIds.size === 0;
   }
+  if (elements.identifySelectedMovements) {
+    elements.identifySelectedMovements.disabled = state.selectedMovementIds.size === 0;
+  }
 }
 
 function renderDuplicates() {
@@ -1209,14 +1260,15 @@ function renderDuplicates() {
     { key: "duplicate_rule", label: "Regra", formatter: (value) => duplicateRuleLabel(value) },
     { key: "duplicate_group", label: "Grupo", formatter: (value) => value || "-" },
     { key: "valor", label: "Valor", formatter: formatCurrency },
-    { key: "status", label: "Status", formatter: (value) => badge(duplicateDecisionLabel(value), value === "matched" ? "success" : value === "reviewed" ? "info" : "warning") },
+    { key: "status", label: "Status", allowHtml: true, formatter: (value) => badge(duplicateDecisionLabel(value), value === "matched" ? "success" : value === "reviewed" ? "info" : "warning") },
     {
       key: "actions",
       label: "Acoes",
+      allowHtml: true,
       formatter: (_, row) => [
-        `<button type="button" class="btn btn-ghost duplicate-action" data-action="not_duplicate" data-id="${row.id}">Nao duplicada</button>`,
-        `<button type="button" class="btn btn-ghost duplicate-action" data-action="keep" data-id="${row.id}">Manter esta</button>`,
-        `<button type="button" class="btn btn-ghost duplicate-action" data-action="review_later" data-id="${row.id}">Revisar depois</button>`,
+        `<button type="button" class="btn btn-ghost duplicate-action" data-action="not_duplicate" data-id="${escapeHtml(row.id)}">Nao duplicada</button>`,
+        `<button type="button" class="btn btn-ghost duplicate-action" data-action="keep" data-id="${escapeHtml(row.id)}">Manter esta</button>`,
+        `<button type="button" class="btn btn-ghost duplicate-action" data-action="review_later" data-id="${escapeHtml(row.id)}">Revisar depois</button>`,
       ].join(" "),
     },
   ], state.duplicates);
@@ -1257,15 +1309,16 @@ function renderInstallments() {
     { key: "amount", label: "Valor atual", formatter: formatCurrency },
     { key: "remaining_count", label: "Restantes", formatter: (value) => String(value ?? 0) },
     { key: "account_name", label: "Conta" },
-    { key: "status", label: "Status", formatter: (value) => badge(value || "active", value === "completed" ? "success" : value === "cancelled" ? "danger" : "info") },
+    { key: "status", label: "Status", allowHtml: true, formatter: (value) => badge(value || "active", value === "completed" ? "success" : value === "cancelled" ? "danger" : "info") },
     {
       key: "actions",
       label: "Acoes",
+      allowHtml: true,
       formatter: (_, row) => [
-        row.item_id ? `<button type="button" class="btn btn-ghost installment-action" data-action="mark-paid" data-plan-id="${row.plan_id}" data-item-id="${row.item_id}">Marcar paga</button>` : "",
-        row.item_id ? `<button type="button" class="btn btn-ghost installment-action" data-action="link" data-plan-id="${row.plan_id}" data-item-id="${row.item_id}">Vincular</button>` : "",
-        `<button type="button" class="btn btn-ghost installment-action" data-action="delete-plan" data-plan-id="${row.plan_id}">Excluir</button>`,
-        `<button type="button" class="btn btn-ghost installment-action" data-action="cancel-plan" data-plan-id="${row.plan_id}">Cancelar</button>`,
+        row.item_id ? `<button type="button" class="btn btn-ghost installment-action" data-action="mark-paid" data-plan-id="${escapeHtml(row.plan_id)}" data-item-id="${escapeHtml(row.item_id)}">Marcar paga</button>` : "",
+        row.item_id ? `<button type="button" class="btn btn-ghost installment-action" data-action="link" data-plan-id="${escapeHtml(row.plan_id)}" data-item-id="${escapeHtml(row.item_id)}">Vincular</button>` : "",
+        `<button type="button" class="btn btn-ghost installment-action" data-action="delete-plan" data-plan-id="${escapeHtml(row.plan_id)}">Excluir</button>`,
+        `<button type="button" class="btn btn-ghost installment-action" data-action="cancel-plan" data-plan-id="${escapeHtml(row.plan_id)}">Cancelar</button>`,
       ].filter(Boolean).join(" "),
     },
   ], rows);
@@ -1321,7 +1374,7 @@ function renderSuppliers() {
   }
 
   elements.counterpartiesTable.innerHTML = tableHtml([
-    { key: "selection", label: "Selecionar", formatter: (_, row) => `<input type="checkbox" class="supplier-select" data-key="${row.supplier_key}" ${state.selectedSupplierKeys.has(row.supplier_key) ? "checked" : ""} aria-label="Selecionar fornecedor">` },
+    { key: "selection", label: "Selecionar", allowHtml: true, formatter: (_, row) => `<input type="checkbox" class="supplier-select" data-key="${escapeHtml(row.supplier_key)}" ${state.selectedSupplierKeys.has(row.supplier_key) ? "checked" : ""} aria-label="Selecionar fornecedor">` },
     { key: "supplier_name", label: "Fornecedor" },
     { key: "purchase_count", label: "Compras" },
     { key: "total_spent", label: "Total gasto", formatter: (value) => formatCurrency(value) },
@@ -1335,9 +1388,11 @@ function renderSuppliers() {
     {
       key: "actions",
       label: "Acoes",
+      allowHtml: true,
       formatter: (_, row) => [
         `<button type="button" class="btn btn-ghost supplier-action" data-action="view" data-supplier="${escapeHtml(row.supplier_name)}" data-supplier-key="${escapeHtml(row.supplier_key)}">Ver gastos</button>`,
         `<button type="button" class="btn btn-ghost supplier-action" data-action="categorize" data-supplier="${escapeHtml(row.supplier_name)}" data-supplier-key="${escapeHtml(row.supplier_key)}">Categorizar gastos</button>`,
+        `<button type="button" class="btn btn-ghost supplier-action" data-action="identify" data-supplier="${escapeHtml(row.supplier_name)}" data-supplier-key="${escapeHtml(row.supplier_key)}">Nome amigavel</button>`,
       ].join(" "),
     },
   ], state.suppliers);
@@ -1426,7 +1481,7 @@ function renderPreview() {
     { key: "occurred_on", label: "Data", formatter: formatDate },
     { key: "description", label: "Descricao" },
     { key: "amount", label: "Valor", formatter: formatCurrency },
-    { key: "status", label: "Status", formatter: (value) => badge(previewStatusLabel(value), value === "accepted" ? "success" : value === "duplicate" ? "warning" : "danger") },
+    { key: "status", label: "Status", allowHtml: true, formatter: (value) => badge(previewStatusLabel(value), value === "accepted" ? "success" : value === "duplicate" ? "warning" : "danger") },
     { key: "duplicate_reason", label: "Motivo", formatter: (value) => value || "-" },
   ], rows);
   elements.previewPanel.appendChild(rowsRegion);
@@ -1463,15 +1518,16 @@ function renderHistory() {
       { key: "institution", label: "Banco", formatter: (_, row) => row.institution?.name || "-" },
       { key: "financial_account", label: "Conta", formatter: (_, row) => row.financial_account?.name || "-" },
       { key: "started_at", label: "Inicio", formatter: formatDateTime },
-      { key: "status", label: "Status", formatter: (value) => badge(importStatusLabel(value), historyTone(value)) },
+      { key: "status", label: "Status", allowHtml: true, formatter: (value) => badge(importStatusLabel(value), historyTone(value)) },
       { key: "duration", label: "Tempo", formatter: (_, row) => formatDuration(row.started_at, row.finished_at) },
       {
         key: "actions",
         label: "Acoes",
+        allowHtml: true,
         formatter: (_, row) => [
-          `<button type="button" class="btn btn-ghost history-action" data-action="view" data-import-id="${row.id}">Visualizar</button>`,
+          `<button type="button" class="btn btn-ghost history-action" data-action="view" data-import-id="${escapeHtml(row.id)}">Visualizar</button>`,
           row.status === "pending_confirmation"
-            ? `<button type="button" class="btn btn-ghost history-action" data-action="cancel" data-import-id="${row.id}">Cancelar</button>`
+            ? `<button type="button" class="btn btn-ghost history-action" data-action="cancel" data-import-id="${escapeHtml(row.id)}">Cancelar</button>`
             : "",
         ].join(" "),
       },
@@ -1513,7 +1569,7 @@ function renderHistoryDetails() {
   );
   if (details.status === "pending_confirmation") {
     const actions = createNode("div", "toolbar-inline");
-    actions.innerHTML = `<button type="button" class="btn btn-primary history-detail-action" data-action="confirm" data-import-id="${details.id}">Confirmar importacao</button>`;
+    actions.innerHTML = `<button type="button" class="btn btn-primary history-detail-action" data-action="confirm" data-import-id="${escapeHtml(details.id)}">Confirmar importacao</button>`;
     summary.appendChild(actions);
   }
   elements.historyDetails.appendChild(summary);
@@ -1539,7 +1595,7 @@ function renderHistoryDetails() {
     { key: "occurred_on", label: "Data", formatter: formatDate },
     { key: "description", label: "Descricao" },
     { key: "amount", label: "Valor", formatter: formatCurrency },
-    { key: "status", label: "Status", formatter: (value) => badge(previewStatusLabel(value), value === "accepted" ? "success" : value === "duplicate" ? "warning" : "neutral") },
+    { key: "status", label: "Status", allowHtml: true, formatter: (value) => badge(previewStatusLabel(value), value === "accepted" ? "success" : value === "duplicate" ? "warning" : "neutral") },
     { key: "linked_transaction_id", label: "Vinculo", formatter: (value) => value ? "Criada" : "-" },
   ], details.rows ?? []);
   elements.historyDetails.appendChild(rowsWrap);
@@ -1552,11 +1608,7 @@ function tableHtml(columns, rows) {
       const raw = typeof column.formatter === "function"
         ? column.formatter(row[column.key], row)
         : row[column.key] ?? "-";
-      const content = typeof raw === "string" && raw.includes("<span")
-        ? raw
-        : typeof raw === "string" && (raw.includes("<button") || raw.includes("<input") || raw.includes("<select"))
-          ? raw
-          : escapeHtml(raw);
+      const content = column.allowHtml === true ? String(raw ?? "") : escapeHtml(raw);
       return `<td data-label="${escapeHtml(column.label)}">${content}</td>`;
     }).join("");
     return `<tr>${cells}</tr>`;
@@ -1576,13 +1628,13 @@ function renderCatalog(entityName) {
     const rows = entityState.items.map((item) => ({
       ...item,
       actions: [
-        `<button type="button" class="btn btn-ghost catalog-action" data-action="edit" data-entity="${entityName}" data-id="${item.id}">Editar</button>`,
+        `<button type="button" class="btn btn-ghost catalog-action" data-action="edit" data-entity="${escapeHtml(entityName)}" data-id="${escapeHtml(item.id)}">Editar</button>`,
         item.user_id === null && entityName === "categories"
           ? ""
-          : `<button type="button" class="btn btn-ghost catalog-action" data-action="archive" data-entity="${entityName}" data-id="${item.id}">Arquivar</button>`,
+          : `<button type="button" class="btn btn-ghost catalog-action" data-action="archive" data-entity="${escapeHtml(entityName)}" data-id="${escapeHtml(item.id)}">Arquivar</button>`,
       ].join(" "),
     }));
-    target.innerHTML = tableHtml([...config.columns, { key: "actions", label: "Acoes" }], rows);
+    target.innerHTML = tableHtml([...config.columns, { key: "actions", label: "Acoes", allowHtml: true }], rows);
   }
 
   if (paginationLabel) {
@@ -1934,6 +1986,41 @@ async function persistMovementsCategory(movementIds, categoryId) {
   return result;
 }
 
+function askFriendlySupplierName(currentName = "") {
+  const value = window.prompt(
+    "Informe o nome amigavel do fornecedor. Ele sera reconhecido automaticamente nas proximas importacoes:",
+    currentName || "",
+  );
+  if (value === null) return null;
+  const supplierName = value.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim();
+  if (supplierName.length < 2 || supplierName.length > 160) {
+    throw new Error("O nome amigavel deve ter entre 2 e 160 caracteres.");
+  }
+  return supplierName;
+}
+
+async function persistMovementsSupplier(movementIds, supplierName, categoryId = null) {
+  const uniqueIds = [...new Set(movementIds.filter(Boolean))];
+  const result = { updated_count: 0, learned_rules: 0, learning_failures: 0 };
+  for (let index = 0; index < uniqueIds.length; index += 500) {
+    const { response, payload } = await apiFetch("/portal/movements/supplier", {
+      method: "PATCH",
+      body: {
+        movementIds: uniqueIds.slice(index, index + 500),
+        supplierName,
+        categoryId,
+      },
+    });
+    if (!response.ok) {
+      throw new Error(payload?.erro || "Nao foi possivel identificar o fornecedor.");
+    }
+    result.updated_count += Number(payload.updated_count || 0);
+    result.learned_rules += Number(payload.learned_rules || 0);
+    result.learning_failures += Number(payload.learning_failures || 0);
+  }
+  return result;
+}
+
 async function fetchSupplierMovementsForCategorization(supplierKey) {
   const query = buildGlobalQuery();
   query.set("supplierKey", supplierKey);
@@ -1999,12 +2086,56 @@ async function handleBulkCategorizeMovements() {
     setLoading(elements.categorizeSelectedMovements, false);
   }
 }
+async function handleBulkIdentifyMovements() {
+  const selectedIds = [...state.selectedMovementIds];
+  if (!selectedIds.length) return;
+
+  try {
+    const supplierName = askFriendlySupplierName();
+    if (!supplierName) return;
+    setLoading(elements.identifySelectedMovements, true, "Salvando...");
+    const result = await persistMovementsSupplier(selectedIds, supplierName);
+    state.selectedMovementIds.clear();
+    state.selectedMovementItems.clear();
+    await Promise.all([fetchMovements(), fetchOverview(), fetchSuppliers()]);
+    renderMovements();
+    renderDashboard();
+    renderSuppliers();
+    const warning = result.learning_failures ? " Algumas regras nao puderam ser aprendidas." : "";
+    showToast(`${result.updated_count} movimentacoes identificadas como ${supplierName}.${warning}`, result.learning_failures ? "warning" : "success");
+  } catch (error) {
+    showToast(error.message || "Nao foi possivel identificar o fornecedor.", "error");
+  } finally {
+    setLoading(elements.identifySelectedMovements, false);
+  }
+}
 async function handleMovementTableAction(event) {
-  const button = event.target.closest(".movement-action[data-action='categorize']");
+  const button = event.target.closest(".movement-action");
   if (!button) return;
 
   const movement = state.movements.find((item) => item.id === button.dataset.id);
   if (!movement) return;
+
+  if (button.dataset.action === "identify") {
+    try {
+      const supplierName = askFriendlySupplierName(movement.contraparte || "");
+      if (!supplierName) return;
+      setLoading(button, true, "Salvando...");
+      await persistMovementsSupplier([movement.id], supplierName, movement.categoria_id || null);
+      await Promise.all([fetchMovements(), fetchOverview(), fetchSuppliers()]);
+      renderMovements();
+      renderDashboard();
+      renderSuppliers();
+      showToast(`Fornecedor identificado como ${supplierName}.`, "success");
+    } catch (error) {
+      showToast(error.message || "Nao foi possivel identificar o fornecedor.", "error");
+    } finally {
+      setLoading(button, false);
+    }
+    return;
+  }
+
+  if (button.dataset.action !== "categorize") return;
 
   try {
     const category = await chooseCategoryFor(movement.descricao || movement.descricao_normalizada || "Movimentacao");
@@ -2092,6 +2223,29 @@ async function handleSupplierTableAction(event) {
     await fetchMovements();
     renderMovements();
     showToast("Movimentacoes filtradas pelo fornecedor selecionado.", "info");
+    return;
+  }
+
+  if (action === "identify") {
+    try {
+      const friendlyName = askFriendlySupplierName(supplierName);
+      if (!friendlyName) return;
+      setLoading(button, true, "Salvando...");
+      const movements = await fetchSupplierMovementsForCategorization(supplierKey);
+      if (!movements.length) {
+        throw new Error("Nenhuma movimentacao encontrada para este fornecedor no periodo atual.");
+      }
+      await persistMovementsSupplier(movements.map((movement) => movement.id), friendlyName);
+      await Promise.all([fetchMovements(), fetchOverview(), fetchSuppliers()]);
+      renderMovements();
+      renderDashboard();
+      renderSuppliers();
+      showToast(`Fornecedor identificado como ${friendlyName}.`, "success");
+    } catch (error) {
+      showToast(error.message || "Nao foi possivel identificar o fornecedor.", "error");
+    } finally {
+      setLoading(button, false);
+    }
     return;
   }
 
@@ -2937,6 +3091,7 @@ function registerEventHandlers() {
     renderMovements();
   });
   elements.categorizeSelectedMovements?.addEventListener("click", handleBulkCategorizeMovements);
+  elements.identifySelectedMovements?.addEventListener("click", handleBulkIdentifyMovements);
   elements.applyMovementsCompetence?.addEventListener("click", async () => {
     const competence = elements.movementsCompetence.value;
     if (!competence) {
@@ -3116,6 +3271,7 @@ function registerEventHandlers() {
 }
 
 async function bootstrap() {
+  startVersionMonitoring();
   registerEventHandlers();
   syncQuickAccountFields();
 
@@ -3156,6 +3312,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-
-
