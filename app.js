@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 
 const APP_NAME = "RebeccaCash";
-const APP_BUILD_VERSION = "2026.09.24.1";
+const APP_BUILD_VERSION = "2026.09.24.2";
 const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const STORAGE_KEY = "rebeccacash.session";
 const RECOVERY_CONTEXT_KEY = "rebeccacash.recovery";
@@ -1074,8 +1074,19 @@ function renderCardBillSummary() {
   (summary.cards ?? []).forEach((row) => {
     const card = createNode("article", "row-card billing-card");
     card.appendChild(createNode("strong", "", row.name));
-    appendBillingPeriod(card, "Fatura atual", row.current_statement ?? row, row.credit_limit_amount);
-    appendBillingPeriod(card, "Proxima fatura", row.next_statement, row.credit_limit_amount);
+    if (row.is_manual_card) {
+      const confirmedStatement = row.current_statement?.billing_status === "paid" && Number(row.current_statement?.payment_amount ?? 0) > 0
+        ? row.current_statement
+        : null;
+      if (confirmedStatement) {
+        appendBillingPeriod(card, "Fatura paga identificada", confirmedStatement, row.credit_limit_amount);
+      } else {
+        card.appendChild(createNode("span", "mini-copy", "Aguardando o pagamento da fatura aparecer no extrato da conta Inter."));
+      }
+    } else {
+      appendBillingPeriod(card, "Fatura atual", row.current_statement ?? row, row.credit_limit_amount);
+      appendBillingPeriod(card, "Proxima fatura", row.next_statement, row.credit_limit_amount);
+    }
     elements.cardBillSummary.appendChild(card);
   });
   (summary.commitments ?? []).forEach((row) => {
