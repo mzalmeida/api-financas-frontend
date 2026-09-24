@@ -813,8 +813,28 @@
     </div>
   </aside>
 
+  <dialog id="categoryPickerDialog" class="category-picker-dialog" aria-labelledby="categoryPickerTitle">
+    <div class="category-picker-shell">
+      <div class="category-picker-head">
+        <div>
+          <p class="eyebrow">Categorizacao</p>
+          <h3 id="categoryPickerTitle">Escolher categoria</h3>
+          <p id="categoryPickerContext" class="mini-copy"></p>
+        </div>
+        <button type="button" id="closeCategoryPicker" class="btn btn-ghost" aria-label="Fechar seletor">Fechar</button>
+      </div>
+      <label for="categoryPickerSearch">Pesquisar categoria</label>
+      <input type="search" id="categoryPickerSearch" placeholder="Digite o nome da categoria" autocomplete="off">
+      <div id="categoryPickerList" class="category-picker-list"></div>
+      <p id="categoryPickerEmpty" class="empty-copy hidden">Nenhuma categoria corresponde a esta pesquisa.</p>
+      <div class="category-picker-actions">
+        <button type="button" id="cancelCategoryPicker" class="btn btn-ghost">Cancelar</button>
+      </div>
+    </div>
+  </dialog>
+
   <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
-  <script type="module" src="app.js?v=20260823-cache-v1"></script>
+  <script type="module" src="app.js?v=20260924-category-picker"></script>
 </body>
 </html>

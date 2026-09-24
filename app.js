@@ -1,7 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.90.1";
 
 const APP_NAME = "RebeccaCash";
-const APP_BUILD_VERSION = "2026.08.23.2";
+const APP_BUILD_VERSION = "2026.09.24.1";
 const VERSION_CHECK_INTERVAL_MS = 5 * 60 * 1000;
 const STORAGE_KEY = "rebeccacash.session";
 const RECOVERY_CONTEXT_KEY = "rebeccacash.recovery";
@@ -1054,7 +1054,10 @@ function renderCardBillSummary() {
       createNode("span", "billing-period-label", label),
       createNode("span", `status-badge ${status === "paid" ? "success" : "warning"}`, status === "paid" ? "Paga" : "Pendente"),
     );
-    const amount = period.open_amount ?? period.statement_amount ?? period.amount;
+    const calculatedAmount = period.open_amount ?? period.statement_amount ?? period.amount;
+    const amount = status === "paid" && Number(period.payment_amount ?? 0) > 0
+      ? period.payment_amount
+      : calculatedAmount;
     block.append(
       head,
       createNode("strong", "billing-amount", formatCurrency(amount)),
@@ -1906,20 +1909,24 @@ async function handleCreateAccount(event) {
   }
 }
 
-function buildCategoryPrompt(categories = state.catalogs.categories.items) {
-  return categories
-    .map((category, index) => `${index + 1}. ${category.name}`)
-    .join("\n");
-}
-
 async function ensureCategoryCatalogLoaded() {
-  const query = new URLSearchParams({ page: "1", pageSize: "100" });
-  const { response, payload } = await apiFetch(`/portal/catalog/categories?${query.toString()}`);
-  if (!response.ok) {
-    throw new Error(payload?.erro || "Falha ao carregar categorias.");
-  }
-  state.catalogs.categories.items = payload.items ?? [];
-  state.catalogs.categories.pagination = payload.pagination ?? { page: 1, total_pages: 1, total: state.catalogs.categories.items.length };
+  const items = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const query = new URLSearchParams({ page: String(page), pageSize: "100" });
+    const { response, payload } = await apiFetch(`/portal/catalog/categories?${query.toString()}`);
+    if (!response.ok) {
+      throw new Error(payload?.erro || "Falha ao carregar categorias.");
+    }
+    items.push(...(payload.items ?? []));
+    totalPages = Math.max(1, Number(payload.pagination?.total_pages ?? 1));
+    page += 1;
+  } while (page <= totalPages);
+
+  state.catalogs.categories.items = items;
+  state.catalogs.categories.pagination = { page: 1, total_pages: totalPages, total: items.length };
   return state.catalogs.categories.items;
 }
 
@@ -1929,16 +1936,60 @@ async function chooseCategoryFor(label) {
     throw new Error("Nenhuma categoria disponivel para selecao.");
   }
 
-  const selection = window.prompt(`Informe o numero da categoria para "${label}":\n\n${buildCategoryPrompt(categories)}`);
-  if (!selection) return null;
+  const dialog = document.getElementById("categoryPickerDialog");
+  const title = document.getElementById("categoryPickerTitle");
+  const context = document.getElementById("categoryPickerContext");
+  const search = document.getElementById("categoryPickerSearch");
+  const list = document.getElementById("categoryPickerList");
+  const empty = document.getElementById("categoryPickerEmpty");
+  const closeButton = document.getElementById("closeCategoryPicker");
+  const cancelButton = document.getElementById("cancelCategoryPicker");
 
-  const index = Number.parseInt(selection, 10) - 1;
-  const category = categories[index];
-  if (!category?.id) {
-    throw new Error("Categoria invalida.");
+  if (!dialog || !title || !context || !search || !list || !empty || !closeButton || !cancelButton) {
+    throw new Error("Seletor de categorias indisponivel.");
   }
 
-  return category;
+  title.textContent = "Escolher categoria";
+  context.textContent = label;
+  search.value = "";
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (category = null) => {
+      if (settled) return;
+      settled = true;
+      if (dialog.open) dialog.close();
+      resolve(category);
+    };
+    const renderOptions = () => {
+      const query = normalizeText(search.value);
+      const filtered = categories.filter((category) => normalizeText(category.name).includes(query));
+      list.replaceChildren();
+      empty.classList.toggle("hidden", filtered.length > 0);
+      filtered.forEach((category) => {
+        const button = createNode("button", "category-picker-option");
+        button.type = "button";
+        button.append(
+          createNode("span", "category-picker-dot"),
+          createNode("span", "category-picker-name", category.name),
+        );
+        button.addEventListener("click", () => finish(category));
+        list.appendChild(button);
+      });
+    };
+
+    search.oninput = renderOptions;
+    closeButton.onclick = () => finish(null);
+    cancelButton.onclick = () => finish(null);
+    dialog.oncancel = (event) => {
+      event.preventDefault();
+      finish(null);
+    };
+    dialog.onclose = () => finish(null);
+    renderOptions();
+    dialog.showModal();
+    window.requestAnimationFrame(() => search.focus());
+  });
 }
 
 async function persistMovementCategory(movementId, categoryId, notes = null) {
